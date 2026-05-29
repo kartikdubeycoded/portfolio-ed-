@@ -1,0 +1,45 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Playwright screenshot output (dev-only; includes third-party reference captures)
+.shots
+
+# Local working notes / build docs — NOT part of the shipped site
+log.md
+
+# Source & working images (AI mockups, references, screenshots) — not site assets
+Gemini_Generated_Image_*.png
+IMPORTANT STRUCTURE OF THINGS.png
+Screenshot*.png
+ref.*
+
+# Dev tooling (Playwright capture + image crop/stitch scripts)
+*.mjs
+
+# Unused Vite template leftovers
+src/counter.js
+src/assets/hero.png
+src/assets/javascript.svg
+src/assets/vite.svg
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
