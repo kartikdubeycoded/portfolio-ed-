@@ -1,0 +1,1086 @@
+/* =============================================================
+   Painterly Waterfall Canvas — based on a Hudson River School
+   oil-painted waterfall reference. Deep teal water against rust-
+   amber autumn foliage, cream foam at the falls, a white dove
+   in flight. 60/40 split: text left, painted 3D scene right.
+   ============================================================= */
+
+:root {
+  /* ---------- Water (left → depth) ---------- */
+  --water-deep:  #0F2030;   /* deepest pool */
+  --water-mid:   #1A3149;   /* mid water */
+  --water-soft:  #2A4D6A;   /* lit water */
+  --mist:        #7FA0B0;   /* atmospheric haze */
+
+  /* ---------- Foam + light ---------- */
+  --foam:        #E8DEC6;   /* cream foam highlights */
+  --foam-soft:   #C9BDA1;   /* secondary foam */
+
+  /* ---------- Typography (warm cream over cool base) ---------- */
+  --alabaster:   #F4F0EA;
+  --alabaster-d: #C9C2B5;
+  --alabaster-x: #8B8478;
+
+  /* ---------- Autumn foliage ---------- */
+  --amber:       #B85A2A;
+  --amber-deep:  #7E371A;
+  --crimson:     #8B2F1A;
+  --moss:        #4A6B4A;
+  --moss-deep:   #2E4530;
+
+  /* ---------- Accents ---------- */
+  --rose:        #D0848E;   /* Venetian rose / coral accent */
+  --dove:        #F5EFE3;   /* dove white */
+
+  /* ---------- Brief palette (mapped) ---------- */
+  --prussian:    #1A2436;   /* midnight prussian — deep shadow base */
+  --cerulean:    #4A90E2;   /* vivid cerulean mist — fluid highlight */
+  --jade:        #2D5A47;   /* moss jade — organic accent */
+
+  /* ---------- Intensity accent (the brutalist punch) ---------- */
+  --red:         #E5382B;   /* blood red — loud accent */
+  --red-deep:    #B0261C;
+
+  /* ---------- Hairlines ---------- */
+  --rule:        rgba(244, 240, 234, 0.12);
+  --rule-soft:   rgba(244, 240, 234, 0.06);
+
+  /* ---------- Type ---------- */
+  --display: 'Fraunces', 'Times New Roman', serif;
+  --body:    'Fraunces', Georgia, serif;
+  --mono:    'JetBrains Mono', ui-monospace, Consolas, monospace;
+
+  font: 17px/1.6 var(--body);
+  color: var(--alabaster);
+  background: var(--water-deep);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  position: relative;
+  color: var(--alabaster);
+  overflow-x: hidden;
+  cursor: none;
+  /* Warhol near-black base — shows through as the painting scrolls away */
+  background:
+    radial-gradient(90% 50% at 50% 0%, rgba(45, 90, 71, 0.10), transparent 60%),
+    radial-gradient(70% 40% at 80% 60%, rgba(229, 56, 43, 0.06), transparent 65%),
+    linear-gradient(180deg, #0E1118 0%, #0A0C11 55%, #07080B 100%);
+}
+
+@media (pointer: coarse) {
+  html, body { cursor: auto; }
+  .cursor { display: none !important; }
+}
+
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+::selection { background: var(--amber); color: var(--alabaster); }
+
+/* ----- Oil-painting grain (warm specks) ----- */
+.grain {
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0.10;
+  mix-blend-mode: screen;
+}
+
+/* ===========================================================
+   FULL-VIEWPORT SCENE + zigzag content
+   The whole window is the painted scene; text sections
+   alternate sides as the viewer scrolls.
+   =========================================================== */
+
+/* The painted plate — the real oil-painting background.
+   Beauty lives in the image; we only add motion + grade on top. */
+/* ONE STITCHED LAYER: a single continuous scene spanning the WHOLE document,
+   scrolling with the page. The tall canopy→falls→pool strip maps across the
+   entire scroll — one background, no per-section resets, no fixed parallax. */
+.scene {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scene-plate {
+  position: absolute;
+  inset: 0;
+  background-image: url('/plate.png');
+  background-size: cover;
+  background-position: center top;
+  /* the full tall strip mapped down the whole scroll, vivid and sharp */
+  filter: saturate(1.12) brightness(0.94) contrast(1.05);
+  will-change: transform;
+}
+
+/* Continuously drifting haze — makes the scene breathe like footage,
+   not a static pan. Pure CSS, never stops, independent of scroll. */
+.scene-mist {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(42% 30% at 32% 38%, rgba(244, 240, 234, 0.12), transparent 70%),
+    radial-gradient(38% 26% at 68% 62%, rgba(127, 160, 176, 0.12), transparent 70%),
+    radial-gradient(30% 22% at 55% 80%, rgba(232, 222, 198, 0.08), transparent 72%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: mistDrift 30s ease-in-out infinite alternate;
+}
+
+@keyframes mistDrift {
+  0%   { transform: translate(-2%, 1%) scale(1);    opacity: 0.65; }
+  100% { transform: translate(3%, -3%)  scale(1.1); opacity: 1;    }
+}
+
+/* Warhol grade — darken the whole scene so the huge type punches everywhere,
+   while the nature still reads behind it. Consistent across the full scroll. */
+.scene-grade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(9, 11, 16, 0.50) 0%,
+      rgba(9, 11, 16, 0.40) 35%,
+      rgba(9, 11, 16, 0.46) 65%,
+      rgba(7, 8, 11, 0.66) 100%),
+    radial-gradient(70% 40% at 80% 55%, rgba(229, 56, 43, 0.07), transparent 70%);
+}
+
+.scene-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(130% 100% at 50% 42%, transparent 60%, rgba(13, 19, 31, 0.60) 100%);
+}
+
+/* The navigator: a fixed full-viewport canvas so the dove is always on screen,
+   flying through the whole descent. Sits between the scene and the text
+   (z 2) → it flies THROUGH the words, leading the eye section to section. */
+#bird {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2;
+  display: block;
+  pointer-events: none;
+}
+
+/* ===========================================================
+   Cursor — foam ring + amber core
+   =========================================================== */
+
+.cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 300;
+}
+
+.cursor-ring {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(244, 240, 234, 0.55);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.25s ease, height 0.25s ease, border-color 0.25s ease;
+}
+
+.cursor-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--amber);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.cursor.is-hot .cursor-ring {
+  width: 56px;
+  height: 56px;
+  border-color: var(--amber);
+}
+
+.cursor.is-hot .cursor-dot {
+  transform: translate(-50%, -50%) scale(0);
+}
+
+/* ===========================================================
+   Identity mark + scroll hint
+   =========================================================== */
+
+.mark {
+  position: fixed;
+  top: 26px;
+  left: 32px;
+  z-index: 50;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  user-select: none;
+  cursor: none;
+}
+
+.mark-monogram {
+  position: relative;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: clamp(30px, 3.4vw, 44px);
+  letter-spacing: 0.04em;
+  color: var(--alabaster);
+  font-variation-settings: 'opsz' 40, 'wght' 560, 'SOFT' 80, 'WONK' 1;
+  text-shadow: 0 3px 26px rgba(8, 21, 31, 0.7);
+  transition: color 0.35s ease;
+}
+
+/* A signature underline that draws itself in on hover */
+.mark-monogram::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 2px;
+  width: 100%;
+  height: 1.5px;
+  background: var(--amber);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mark:hover .mark-monogram::after, .mark:focus-visible .mark-monogram::after {
+  transform: scaleX(1);
+}
+
+.mark-cue {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--amber);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.mark:hover .mark-monogram, .mark:focus-visible .mark-monogram { color: var(--amber); }
+.mark:hover .mark-cue, .mark:focus-visible .mark-cue { opacity: 1; transform: translateX(0); }
+.mark:focus-visible { outline: none; }
+
+.scroll-hint {
+  position: fixed;
+  bottom: 28px;
+  right: 32px;
+  z-index: 50;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--alabaster-d);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.scroll-line {
+  position: relative;
+  width: 1px;
+  height: 56px;
+  background: rgba(244, 240, 234, 0.22);
+  overflow: hidden;
+}
+
+.scroll-line::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 30%;
+  background: linear-gradient(180deg, var(--amber), transparent);
+  animation: scrollPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes scrollPulse {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(300%); }
+}
+
+/* ===========================================================
+   Sections inside the text rail
+   =========================================================== */
+
+main { position: relative; z-index: 5; }
+
+.section {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 14vh 5vw;
+  position: relative;
+}
+
+.section--left  { justify-content: flex-start; }
+.section--right { justify-content: flex-end;   }
+
+/* (No per-section backgrounds — the single stitched .scene covers everything.) */
+
+.section-inner, .hero-inner, .contact-inner {
+  position: relative;
+  z-index: 6;
+  max-width: 580px;
+  width: 100%;
+}
+
+/* Giant ghost word living inside the painting — one per layer, drifts
+   with the scroll and blends into the paint. "The background has words." */
+.section { overflow: hidden; }
+
+.section-ghost {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(120px, 30vw, 480px);
+  letter-spacing: -0.06em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--foam);
+  opacity: 0.11;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  user-select: none;
+  text-transform: uppercase;
+  font-variation-settings: 'opsz' 144, 'wght' 900, 'SOFT' 0, 'WONK' 0;
+}
+
+.section--left  .section-ghost { left: 64%; }
+.section--right .section-ghost { left: 36%; }
+
+/* No boxes — text floats in the nature. A soft, edge-less scrim sits
+   behind each block purely for legibility (reads as shadow, not a card). */
+.section-inner, .hero-inner, .contact-inner {
+  position: relative;
+  z-index: 2;
+}
+
+.section-inner::before, .hero-inner::before, .contact-inner::before {
+  content: '';
+  position: absolute;
+  inset: -8% -12%;
+  z-index: -1;
+  background: radial-gradient(80% 75% at 30% 45%,
+    rgba(13, 19, 31, 0.62) 0%,
+    rgba(13, 19, 31, 0.34) 45%,
+    transparent 78%);
+  pointer-events: none;
+}
+
+.section--right .section-inner::before {
+  background: radial-gradient(80% 75% at 70% 45%,
+    rgba(13, 19, 31, 0.62) 0%,
+    rgba(13, 19, 31, 0.34) 45%,
+    transparent 78%);
+}
+
+@media (max-width: 980px) {
+  .section { padding: 14vh 7vw; justify-content: flex-start; }
+  .section--right { justify-content: flex-start; }
+  .section-inner, .hero-inner, .contact-inner { max-width: 100%; }
+  /* Mobile fallback: keep the painted plate, drop the heavy 3D bird */
+  #bird { display: none; }
+  .scene-plate { filter: saturate(1.05) brightness(0.78); }
+}
+
+/* ===========================================================
+   Eyebrow labels
+   =========================================================== */
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin: 0 0 28px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.eyebrow::before {
+  content: '';
+  width: 22px;
+  height: 2px;
+  background: var(--red);
+}
+
+/* ===========================================================
+   HERO
+   =========================================================== */
+
+.hero-inner { display: flex; flex-direction: column; gap: 14px; }
+
+/* Hero gets the whole stage so the brutalist type can fill it */
+.section--hero .hero-inner { max-width: min(1180px, 94vw); }
+
+/* ---------- Status HUD (top-right editorial readout) ---------- */
+.hud {
+  position: fixed;
+  top: 30px;
+  right: 32px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--alabaster-d);
+  text-shadow: 0 1px 10px rgba(8, 21, 31, 0.7);
+}
+.hud-sep { color: var(--alabaster-x); }
+.hud-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 10px var(--red);
+  animation: hudPulse 1.8s ease-in-out infinite;
+}
+@keyframes hudPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ---------- Kinetic marquee — constant motion, brutalist energy ---------- */
+.marquee {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 9vh;
+  z-index: 4;
+  overflow: hidden;
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  background: rgba(13, 19, 31, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  will-change: transform;
+  animation: marquee 24s linear infinite;
+}
+.marquee-track span {
+  font-family: var(--display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: clamp(22px, 3vw, 46px);
+  letter-spacing: -0.015em;
+  color: var(--alabaster);
+  font-variation-settings: 'opsz' 60, 'wght' 800, 'SOFT' 0, 'WONK' 1;
+  padding-right: 0.35em;
+}
+.marquee-track i { color: var(--red); font-style: normal; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+.display {
+  font-family: var(--display);
+  font-size: clamp(90px, 17.5vw, 300px);
+  line-height: 0.76;
+  letter-spacing: -0.058em;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: var(--alabaster);
+  margin: 0 0 14px;
+  font-variation-settings: 'opsz' 144, 'wght' 900, 'SOFT' 0, 'WONK' 1;
+  text-shadow: 0 8px 70px rgba(8, 21, 31, 0.75), 0 2px 4px rgba(8, 21, 31, 0.6);
+}
+
+/* "who is Katti?" hero affordance */
+.hero-read {
+  margin: 26px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--alabaster);
+  cursor: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  transition: color 0.35s ease, gap 0.35s ease;
+  text-shadow: 0 2px 14px rgba(8, 21, 31, 0.6);
+}
+
+.hero-read-arrow {
+  color: var(--amber);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.hero-read:hover, .hero-read:focus-visible { color: var(--amber); gap: 16px; outline: none; }
+.hero-read:hover .hero-read-arrow { transform: translateX(5px); }
+
+.display-line { display: block; }
+
+.display-line--alt {
+  font-style: italic;
+  color: var(--red);
+  font-variation-settings: 'opsz' 144, 'wght' 820, 'SOFT' 40, 'WONK' 1;
+  margin-left: clamp(20px, 4vw, 70px);
+  position: relative;
+  text-shadow: 0 8px 70px rgba(229, 56, 43, 0.35), 0 2px 4px rgba(8, 21, 31, 0.6);
+}
+
+.display-line--alt::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 16%;
+  width: clamp(90px, 10vw, 160px);
+  height: 4px;
+  background: var(--red);
+  box-shadow: 0 0 18px rgba(229, 56, 43, 0.6);
+}
+
+.subtitle {
+  font-family: var(--display);
+  font-size: clamp(15px, 1.4vw, 19px);
+  font-style: italic;
+  color: var(--alabaster-d);
+  margin: 14px 0 0;
+  font-variation-settings: 'opsz' 24, 'wght' 380, 'SOFT' 60;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.subtitle .sep { color: var(--moss); font-style: normal; }
+
+/* ===========================================================
+   H2 — section headlines
+   =========================================================== */
+
+h2 {
+  font-family: var(--display);
+  font-size: clamp(42px, 6.4vw, 116px);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--alabaster);
+  margin: 0 0 40px;
+  max-width: 13ch;
+  font-variation-settings: 'opsz' 144, 'wght' 840, 'SOFT' 0, 'WONK' 1;
+  text-shadow: 0 4px 40px rgba(8, 8, 11, 0.7), 0 2px 3px rgba(8, 8, 11, 0.6);
+}
+
+/* Last word of each catchy headline punches red */
+h2 .hot { color: var(--red); }
+
+/* ===========================================================
+   ABOUT
+   =========================================================== */
+
+.body {
+  font-family: var(--body);
+  font-size: clamp(15.5px, 1.05vw, 18px);
+  line-height: 1.65;
+  font-weight: 380;
+  color: var(--alabaster-d);
+  max-width: 540px;
+  margin: 0 0 22px;
+  font-variation-settings: 'opsz' 18, 'wght' 400, 'SOFT' 30;
+  text-shadow: 0 1px 12px rgba(8, 21, 31, 0.55);
+}
+
+.body::first-letter {
+  font-style: italic;
+  color: var(--amber);
+  font-weight: 500;
+}
+
+/* ===========================================================
+   PROJECTS
+   =========================================================== */
+
+/* ===========================================================
+   WORKS — floating text, no boxes. Title leads; supporting
+   lines materialise from the mist on scroll (see main.js).
+   =========================================================== */
+
+.works {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.work {
+  position: relative;
+  padding: 18px 0 18px 26px;
+  cursor: none;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* A thin accent stem instead of a box — grows on hover */
+.work::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22px;
+  bottom: 22px;
+  width: 2px;
+  background: var(--amber);
+  opacity: 0.28;
+  transition: opacity 0.4s ease, transform 0.5s ease;
+  transform: scaleY(0.4);
+  transform-origin: top;
+}
+
+.work--c1::before { background: var(--amber);   }
+.work--c2::before { background: var(--foam);    }
+.work--c3::before { background: var(--moss);    }
+.work--c4::before { background: var(--crimson); }
+
+.work:hover, .work:focus-visible { transform: translateX(10px); outline: none; }
+.work:hover::before, .work:focus-visible::before { opacity: 1; transform: scaleY(1); }
+
+.work-index {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--alabaster-x);
+}
+
+.work-date {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 6px;
+}
+
+.work-title {
+  font-family: var(--display);
+  font-size: clamp(34px, 4.4vw, 74px);
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--alabaster);
+  margin: 4px 0 10px;
+  letter-spacing: -0.04em;
+  line-height: 0.96;
+  font-variation-settings: 'opsz' 144, 'wght' 800, 'SOFT' 0, 'WONK' 1;
+  text-shadow: 0 3px 30px rgba(8, 8, 11, 0.65);
+  transition: color 0.35s ease;
+}
+
+.work--c1 .work-title { color: var(--amber);   }
+.work--c2 .work-title { color: var(--foam);    }
+.work--c3 .work-title { color: var(--moss);    }
+.work--c4 .work-title { color: var(--crimson); }
+.work:hover .work-title, .work:focus-visible .work-title { color: var(--foam); }
+.work--c3:hover .work-title { color: var(--alabaster); }
+
+.work-tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--alabaster-x);
+  margin: 0 0 12px;
+}
+
+.work-line {
+  font-family: var(--body);
+  color: var(--alabaster-d);
+  font-size: 15px;
+  line-height: 1.62;
+  margin: 0 0 14px;
+  max-width: 520px;
+  font-weight: 380;
+  font-variation-settings: 'opsz' 16, 'wght' 400, 'SOFT' 30;
+  text-shadow: 0 1px 10px rgba(8, 21, 31, 0.5);
+}
+
+.work-cue {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.work-cue .arrow {
+  display: inline-block;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.work:hover .work-cue .arrow, .work:focus-visible .work-cue .arrow { transform: translateX(8px); }
+
+/* ===========================================================
+   CONTACT
+   =========================================================== */
+
+.contact-inner { text-align: left; }
+
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 32px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.contact-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+
+.contact-marker {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--amber);
+}
+
+.contact-list a {
+  font-family: var(--display);
+  font-style: italic;
+  color: var(--alabaster);
+  text-decoration: none;
+  font-size: clamp(20px, 2vw, 28px);
+  font-weight: 360;
+  letter-spacing: -0.015em;
+  border-bottom: 1px solid transparent;
+  transition: color 0.3s, border-color 0.3s, transform 0.3s;
+  display: inline-block;
+  font-variation-settings: 'opsz' 36, 'wght' 400, 'SOFT' 60, 'WONK' 1;
+}
+
+.contact-list a:hover {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}
+
+.sign-off {
+  margin-top: 64px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--alabaster-x);
+}
+
+/* ===========================================================
+   LOADING STATE
+   =========================================================== */
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: var(--water-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 18px;
+  transition: opacity 0.6s ease;
+}
+
+.loader.is-hidden { opacity: 0; pointer-events: none; }
+
+.loader-mark {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 32px;
+  color: var(--alabaster);
+  letter-spacing: 0.02em;
+}
+
+.loader-line {
+  width: 120px;
+  height: 1px;
+  background: rgba(244, 240, 234, 0.15);
+  overflow: hidden;
+  position: relative;
+}
+
+.loader-line::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 40%;
+  height: 100%;
+  background: var(--amber);
+  animation: loaderSweep 1.4s ease-in-out infinite;
+}
+
+@keyframes loaderSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.loader-cap {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--alabaster-x);
+}
+
+/* ===========================================================
+   MODAL — dossier
+   =========================================================== */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.modal.is-open { opacity: 1; pointer-events: auto; }
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 21, 31, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.modal-panel {
+  position: relative;
+  width: min(900px, 92vw);
+  max-height: 88vh;
+  background:
+    radial-gradient(80% 60% at 30% 0%, rgba(184, 90, 42, 0.10), transparent 60%),
+    radial-gradient(80% 60% at 80% 100%, rgba(74, 107, 74, 0.08), transparent 60%),
+    var(--water-mid);
+  border: 1px solid var(--rule);
+  box-shadow:
+    0 30px 80px rgba(8, 21, 31, 0.55),
+    0 0 0 1px rgba(232, 222, 198, 0.05) inset;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(28px) scale(0.97);
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.modal-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--amber), var(--foam), var(--moss));
+  opacity: 0.8;
+}
+
+.modal.is-open .modal-panel { transform: translateY(0) scale(1); }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.modal-classification {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.modal-class-tag { color: var(--alabaster-x); }
+.modal-class-val { color: var(--amber); font-weight: 500; }
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: 1px solid var(--alabaster-d);
+  color: var(--alabaster);
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  cursor: none;
+  transition: background 0.3s, color 0.3s;
+}
+
+.modal-close:hover { background: var(--alabaster); color: var(--water-deep); }
+
+.modal-close-x { font-size: 13px; }
+
+.modal-content {
+  padding: 44px 56px 44px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 240, 234, 0.25) transparent;
+  flex: 1;
+}
+
+.modal-content::-webkit-scrollbar { width: 6px; }
+.modal-content::-webkit-scrollbar-thumb { background: rgba(244, 240, 234, 0.25); }
+
+.modal-tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin: 0 0 14px;
+}
+
+.modal-title {
+  font-family: var(--display);
+  font-size: clamp(32px, 4vw, 52px);
+  font-weight: 400;
+  color: var(--alabaster);
+  letter-spacing: -0.025em;
+  margin: 0 0 32px;
+  line-height: 1.02;
+  font-variation-settings: 'opsz' 72, 'wght' 420, 'SOFT' 50, 'WONK' 1;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.modal-body {
+  font-family: var(--body);
+  color: var(--alabaster-d);
+  font-size: 15.5px;
+  line-height: 1.72;
+  font-weight: 380;
+  font-variation-settings: 'opsz' 16, 'wght' 400, 'SOFT' 30;
+}
+
+.modal-body h4 {
+  font-size: 11px;
+  font-family: var(--mono);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--moss);
+  margin: 36px 0 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-body h4::before {
+  content: '§';
+  color: var(--alabaster-x);
+  font-family: var(--display);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.modal-body p { margin: 0 0 16px; }
+
+.modal-body ul, .modal-body ol {
+  margin: 0 0 16px;
+  padding-left: 24px;
+}
+
+.modal-body li { margin-bottom: 7px; }
+.modal-body li::marker { color: var(--amber); }
+
+.modal-body strong { color: var(--alabaster); font-weight: 500; }
+.modal-body em { font-style: italic; color: var(--rose); }
+
+.modal-body a {
+  color: var(--amber);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(184, 90, 42, 0.4);
+}
+
+.modal-body a:hover { border-bottom-color: var(--amber); }
+
+.modal-body code {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: rgba(74, 107, 74, 0.15);
+  color: var(--foam);
+  padding: 2px 7px;
+  letter-spacing: 0.04em;
+}
+
+.modal-body pre {
+  background: rgba(74, 107, 74, 0.08);
+  border-left: 2px solid var(--moss);
+  padding: 18px 22px;
+  overflow-x: auto;
+  margin: 0 0 18px;
+}
+
+.modal-body pre code {
+  background: transparent;
+  color: var(--alabaster-d);
+  padding: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 28px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--alabaster-x);
+}
+
+@media (max-width: 640px) {
+  .modal-content { padding: 32px 24px 32px; }
+  .modal-header, .modal-footer { padding: 14px 18px; }
+}
+
+[data-decode] { display: inline-block; }
