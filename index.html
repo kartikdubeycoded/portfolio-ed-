@@ -5,267 +5,130 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Kartik Dubey — Data Scientist &amp; AI Engineer</title>
-    <meta name="description" content="Kartik Dubey — Data Scientist &amp; AI Engineer building multi-agent systems, RAG pipelines and applied ML. Architect of katti-os. Open to work." />
+    <title>Kartik Dubey — Data Science &amp; AI</title>
+    <meta name="description" content="Kartik Dubey — Data Science, AI engineering, systems architecture. Multi-agent systems, RAG, applied ML. Open to work." />
     <link rel="canonical" href="https://katticodedit.in/" />
     <meta name="author" content="Kartik Dubey" />
-    <meta name="theme-color" content="#0A0C11" />
-
-    <!-- Open Graph (link previews) -->
+    <meta name="theme-color" content="#08090B" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Kartik Dubey — Data Scientist &amp; AI Engineer" />
-    <meta property="og:description" content="Multi-agent systems, RAG, applied ML — a cinematic portfolio. Open to work." />
+    <meta property="og:title" content="Kartik Dubey — Data Science &amp; AI" />
+    <meta property="og:description" content="Multi-agent systems, RAG, applied ML. Open to work." />
     <meta property="og:url" content="https://katticodedit.in/" />
     <meta property="og:image" content="https://katticodedit.in/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="Kartik Dubey" />
-
-    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Kartik Dubey — Data Scientist &amp; AI Engineer" />
-    <meta name="twitter:description" content="Multi-agent systems, RAG, applied ML — a cinematic portfolio. Open to work." />
     <meta name="twitter:image" content="https://katticodedit.in/og.png" />
-
-    <!-- Structured data: Person (helps you surface for "Kartik Dubey") -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Person",
-      "name": "Kartik Dubey",
-      "jobTitle": "Data Scientist & AI Engineer",
-      "url": "https://katticodedit.in/",
-      "email": "kartikdubey1934@gmail.com",
-      "address": { "@type": "PostalAddress", "addressLocality": "Navi Mumbai", "addressCountry": "IN" },
-      "sameAs": [
-        "https://github.com/kartikdubeycoded",
-        "https://www.linkedin.com/in/kartik-dubey-80b100293/"
-      ]
-    }
+    {"@context":"https://schema.org","@type":"Person","name":"Kartik Dubey","jobTitle":"Data Science & AI Engineer","url":"https://katticodedit.in/","email":"kartikdubey1934@gmail.com","address":{"@type":"PostalAddress","addressLocality":"Navi Mumbai","addressCountry":"IN"},"sameAs":["https://github.com/kartikdubeycoded","https://www.linkedin.com/in/kartik-dubey-80b100293/"]}
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   </head>
   <body>
-    <!-- Loader -->
-    <div class="loader" id="loader">
-      <div class="loader-mark">entering the canopy…</div>
-      <div class="loader-line"></div>
-      <div class="loader-cap">Kartik Dubey</div>
+    <!-- Boot -->
+    <div class="boot" id="boot">
+      <div class="boot-mark">katti</div>
+      <div class="boot-bar"><span></span></div>
+      <div class="boot-line" id="boot-line">initialising…</div>
     </div>
 
-    <!-- Full-viewport painted scene (the plate) -->
-    <div class="scene" aria-hidden="true">
-      <div class="scene-plate"></div>
-      <div class="scene-mist"></div>
-      <div class="scene-grade"></div>
-      <div class="scene-vignette"></div>
-    </div>
+    <!-- The ball (fixed 3D centerpiece) -->
+    <canvas id="ball"></canvas>
 
-    <!-- Procedural low-poly bird — transparent canvas over the plate -->
-    <canvas id="bird"></canvas>
+    <!-- Data-packet layer (ball → katti) -->
+    <div class="packets" id="packets" aria-hidden="true"></div>
 
-    <!-- Oil-painting grain -->
-    <svg class="grain" aria-hidden="true">
-      <filter id="noise">
-        <feTurbulence type="fractalNoise" baseFrequency="0.92" numOctaves="2" stitchTiles="stitch"/>
-        <feColorMatrix values="0 0 0 0 0.92  0 0 0 0 0.88  0 0 0 0 0.79  0 0 0 0.5 0"/>
-      </filter>
-      <rect width="100%" height="100%" filter="url(#noise)"/>
-    </svg>
+    <!-- Persistent chrome -->
+    <a class="brand" id="brand" href="#top">katti<span class="brand-port" id="brand-port"></span></a>
+    <div class="status"><span class="status-dot"></span><span>system online</span></div>
+    <div class="scroll-cue" id="scroll-cue"><span>scroll</span><i></i></div>
 
-    <!-- Custom cursor -->
-    <div class="cursor" id="cursor">
-      <div class="cursor-ring"></div>
-      <div class="cursor-dot"></div>
-    </div>
-
-    <!-- Identity stamp — KATTI opens the personal dossier -->
-    <header class="mark" data-modal="katti" tabindex="0" role="button" aria-label="Who is Katti — open personal note">
-      <span class="mark-monogram">KATTI</span>
-      <span class="mark-cue">who?</span>
-    </header>
-
-    <!-- Status HUD — editorial density -->
-    <div class="hud" aria-hidden="true">
-      <span class="hud-dot"></span>
-      <span>AVAILABLE FOR WORK</span>
-      <span class="hud-sep">/</span>
-      <span>NAVI MUMBAI · 19.0°N 73.0°E</span>
-    </div>
-
-    <!-- Scroll cue -->
-    <div class="scroll-hint" id="scroll-hint">
-      <span>scroll</span>
-      <div class="scroll-line"></div>
-    </div>
-
-    <main>
-      <section class="section section--left section--hero" data-section="hero">
-        <div class="hero-inner">
-          <p class="eyebrow">— Identity</p>
-          <h1 class="display">
-            <span class="display-line" data-decode>Kartik</span>
-            <span class="display-line display-line--alt" data-decode>Dubey.</span>
-          </h1>
-          <p class="subtitle">
-            <span>Data&nbsp;Scientist</span>
-            <span class="sep">·</span>
-            <span>AI&nbsp;Engineer</span>
-            <span class="sep">·</span>
-            <span>Systems&nbsp;Architect</span>
-          </p>
-          <p class="hero-read" data-modal="katti" tabindex="0" role="button" aria-label="Read who Katti is">
-            <span class="hero-read-arrow">→</span> who is Katti?
-          </p>
-        </div>
-
-        <div class="marquee" aria-hidden="true">
-          <div class="marquee-track">
-            <span>DATA SCIENTIST <i>—</i> AI ENGINEER <i>—</i> SYSTEMS ARCHITECT <i>—</i> MULTI-AGENT <i>—</i> RAG <i>—</i> KNOWLEDGE GRAPHS <i>—</i> </span>
-            <span>DATA SCIENTIST <i>—</i> AI ENGINEER <i>—</i> SYSTEMS ARCHITECT <i>—</i> MULTI-AGENT <i>—</i> RAG <i>—</i> KNOWLEDGE GRAPHS <i>—</i> </span>
-          </div>
+    <main id="top">
+      <!-- HERO -->
+      <section class="panel panel--hero" data-step="hero">
+        <div class="hero-id">
+          <p class="eyebrow">// Kartik Dubey</p>
+          <h1 class="hero-name">Kartik<br>Dubey</h1>
+          <p class="hero-sub">Data Science · AI Engineering · Systems Architecture</p>
         </div>
       </section>
 
-      <section class="section section--right section--about" data-section="about">
-        <span class="section-ghost" aria-hidden="true">FINAL YEAR</span>
-        <div class="section-inner">
+      <!-- ABOUT -->
+      <section class="panel panel--right" data-step="about">
+        <div class="content">
           <p class="eyebrow">01 — About</p>
-          <h2 data-decode>I think in systems, not scripts.</h2>
-          <p class="body">
-            I think in systems. Multi-agent architectures, RAG pipelines, knowledge graphs —
-            the kind of designs senior engineers nod at. I spent my last year shipping
-            an industrial RAG product at TCS after an ML internship at Reliance.
-            Now I'm building my own stack.
-          </p>
-          <p class="body">
-            Based in Navi Mumbai. Working with a frontier LLM as my engineering team. Architect first,
-            engineer second — and getting faster at the second every week.
-          </p>
+          <h2>I think in systems, not scripts.</h2>
+          <p class="body">Give me a hard problem and the first thing that forms isn't a function — it's an architecture: the agents, the memory, the data flow, where it breaks. Architect first, engineer second, and closing that gap fast.</p>
+          <p class="body">Final-year B.Tech Data Science at Manipal University Jaipur. Based in Navi Mumbai.</p>
         </div>
       </section>
 
-      <section class="section section--left section--projects" data-section="projects">
-        <span class="section-ghost" aria-hidden="true">WORKSHOP</span>
-        <div class="section-inner">
-          <p class="eyebrow">02 — Selected Work</p>
-          <h2 data-decode>Four bets. One workshop.</h2>
-
-          <ol class="works">
-            <li class="work work--c1" data-modal="katti-os" tabindex="0" role="button" aria-label="Open katti-os details">
-              <span class="work-index">01</span>
-              <h3 class="work-title">katti-os</h3>
-              <p class="work-tag">Personal AI OS · multi-agent · in progress</p>
-              <p class="work-line">A persistent COO-style LLM orchestrating specialist agents over a 3-layer memory, with a council of local LLMs as an anti-sycophancy verdict layer.</p>
-              <span class="work-cue">open dossier <span class="arrow">→</span></span>
-            </li>
-
-            <li class="work work--c2" data-modal="lexara" tabindex="0" role="button" aria-label="Open Lexara details">
-              <span class="work-index">02</span>
-              <h3 class="work-title">Lexara</h3>
-              <p class="work-tag">Multi-agent Legal RAG · spec'd</p>
-              <p class="work-line">A 4-agent legal-document Q&A pipeline (Parser → Librarian → Drafter → Critic) targeting 92–95% accuracy against a 65% single-LLM baseline.</p>
-              <span class="work-cue">open dossier <span class="arrow">→</span></span>
-            </li>
-
-            <li class="work work--c3" data-modal="grpo" tabindex="0" role="button" aria-label="Open GRPO Trading details">
-              <span class="work-index">03</span>
-              <h3 class="work-title">GRPO Trading</h3>
-              <p class="work-tag">Multi-agent backtest framework · spec'd</p>
-              <p class="work-line">Group-Relative-Policy-Optimization-inspired trading system. Specialist agents act on shared market data; a judge reweights their influence by recent profitability.</p>
-              <span class="work-cue">open dossier <span class="arrow">→</span></span>
-            </li>
-
-            <li class="work work--c4" data-modal="tribe" tabindex="0" role="button" aria-label="Open TRIBE-Industrial details">
-              <span class="work-index">04</span>
-              <h3 class="work-title">TRIBE-Industrial</h3>
-              <p class="work-tag">Tri-modal foundation model · research</p>
-              <p class="work-line">Adapting Meta's TRIBE v2 trimodal architecture from neuroscience to industrial field diagnosis — predicting the manual section a senior engineer would consult.</p>
-              <span class="work-cue">open dossier <span class="arrow">→</span></span>
-            </li>
-          </ol>
+      <!-- KATTI -->
+      <section class="panel panel--left" data-step="katti">
+        <div class="content">
+          <p class="eyebrow">02 — Katti</p>
+          <h2>Direct. Intense about the right things.</h2>
+          <p class="body">I'd rather hear the truth than be managed, and I give the same back. Allergic to busywork that looks productive but ships nothing. I finished a year-long industrial-RAG internship at TCS and turned down the return offer to build the work I actually want to be hired for — in public.</p>
+          <button class="link-btn" data-doc="katti">read the full note →</button>
         </div>
       </section>
 
-      <section class="section section--right section--experience" data-section="experience">
-        <span class="section-ghost" aria-hidden="true">SHIPPED</span>
-        <div class="section-inner">
-          <p class="eyebrow">03 — Where I've Shipped</p>
-          <h2 data-decode>I ship the real thing.</h2>
-
-          <ol class="works works--exp">
-            <li class="work" data-modal="tcs" tabindex="0" role="button" aria-label="Open TCS Industrial RAG details">
-              <span class="work-date">2025 — 2026</span>
-              <h3 class="work-title">TCS · Industrial RAG</h3>
-              <p class="work-line">An industrial-document Q&A system over OEM service manuals — Qdrant, nomic-embed-text, custom chunking for engineering PDFs, deployed for field engineers.</p>
-              <span class="work-cue">open dossier <span class="arrow">→</span></span>
-            </li>
-
-            <li class="work" data-modal="reliance" tabindex="0" role="button" aria-label="Open Reliance ML details">
-              <span class="work-date">2024 — 2025</span>
-              <h3 class="work-title">Reliance · Churn + EDA</h3>
-              <p class="work-line">Customer-churn prediction end-to-end — feature engineering, gradient-boosted classifier, SHAP explainability — plus EDA pipelines turning raw data into decisions.</p>
-              <span class="work-cue">open dossier <span class="arrow">→</span></span>
-            </li>
-
-            <li class="work" data-modal="independent" tabindex="0" role="button" aria-label="Open independent work details">
-              <span class="work-date">ongoing</span>
-              <h3 class="work-title">Independent</h3>
-              <p class="work-line">Designing and shipping the four projects above. ~200-commit target this quarter. Public portfolio, public learning.</p>
-              <span class="work-cue">open dossier <span class="arrow">→</span></span>
-            </li>
-          </ol>
-        </div>
-      </section>
-
-      <section class="section section--left section--contact" data-section="contact">
-        <span class="section-ghost" aria-hidden="true">OPEN</span>
-        <div class="section-inner contact-inner">
-          <p class="eyebrow">04 — Contact</p>
-          <h2 data-decode>Let's build something that runs.</h2>
-          <ul class="contact-list">
-            <li>
-              <span class="contact-marker">→</span>
-              <a href="mailto:kartikdubey1934@gmail.com" data-magnetic>kartikdubey1934@gmail.com</a>
-            </li>
-            <li>
-              <span class="contact-marker">→</span>
-              <a href="https://github.com/kartikdubeycoded" target="_blank" rel="noopener" data-magnetic>github</a>
-            </li>
-            <li>
-              <span class="contact-marker">→</span>
-              <a href="https://www.linkedin.com/in/kartik-dubey-80b100293/" target="_blank" rel="noopener" data-magnetic>linkedin</a>
-            </li>
+      <!-- EXPERIENCE -->
+      <section class="panel panel--right" data-step="experience">
+        <div class="content">
+          <p class="eyebrow">03 — Experience</p>
+          <h2>I ship the real thing.</h2>
+          <ul class="rows">
+            <li class="row" data-doc="tcs"><span class="row-date">2025–26</span><span class="row-name">TCS · Industrial RAG</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="reliance"><span class="row-date">2024–25</span><span class="row-name">Reliance · Churn + EDA</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="independent"><span class="row-date">ongoing</span><span class="row-name">Independent</span><span class="row-go">→</span></li>
           </ul>
-          <div class="sign-off">— end of dossier —</div>
+        </div>
+      </section>
+
+      <!-- PROJECTS -->
+      <section class="panel panel--left" data-step="projects">
+        <div class="content">
+          <p class="eyebrow">04 — Projects</p>
+          <h2>Four bets, built in public.</h2>
+          <ul class="rows">
+            <li class="row" data-doc="katti-os"><span class="row-idx">01</span><span class="row-name">katti-os</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="lexara"><span class="row-idx">02</span><span class="row-name">Lexara</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="grpo"><span class="row-idx">03</span><span class="row-name">GRPO Trading</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="tribe"><span class="row-idx">04</span><span class="row-name">TRIBE-Industrial</span><span class="row-go">→</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- CONTACT -->
+      <section class="panel panel--hero" data-step="contact">
+        <div class="content content--center">
+          <p class="eyebrow">05 — Contact</p>
+          <h2>Let's build something that runs.</h2>
+          <div class="contact-links">
+            <a href="mailto:kartikdubey1934@gmail.com">kartikdubey1934@gmail.com</a>
+            <a href="https://github.com/kartikdubeycoded" target="_blank" rel="noopener">github.com/kartikdubeycoded</a>
+            <a href="https://www.linkedin.com/in/kartik-dubey-80b100293/" target="_blank" rel="noopener">linkedin · kartik dubey</a>
+          </div>
         </div>
       </section>
     </main>
 
-    <!-- Detail modal -->
-    <div class="modal" id="modal" aria-hidden="true" role="dialog">
-      <div class="modal-backdrop" data-close></div>
-      <div class="modal-panel" role="document">
-        <div class="modal-header">
-          <div class="modal-classification">
-            <span class="modal-class-tag">Dossier</span>
-            <span class="modal-class-val" id="modal-docid">DOC · ——</span>
-          </div>
-          <button class="modal-close" data-close aria-label="Close">
-            <span class="modal-close-x">✕</span>
-            <span class="modal-close-label">close</span>
-          </button>
-        </div>
-        <div class="modal-content" id="modal-content" data-lenis-prevent></div>
-        <div class="modal-footer">
-          <span>Kartik Dubey</span>
-          <span>portfolio</span>
-        </div>
+    <!-- Dossier window -->
+    <section class="window" id="window" aria-hidden="true" role="dialog">
+      <div class="window-scrim" data-close></div>
+      <div class="window-panel">
+        <header class="window-bar">
+          <span class="window-id" id="window-id">DOC · ——</span>
+          <span class="window-title" id="window-title">—</span>
+          <button class="window-close" data-close aria-label="Close">close ✕</button>
+        </header>
+        <div class="window-body" id="window-body" data-lenis-prevent></div>
       </div>
-    </div>
+    </section>
 
     <script type="module" src="/src/main.js"></script>
   </body>

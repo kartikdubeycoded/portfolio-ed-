@@ -3,294 +3,204 @@ import * as THREE from 'three';
 import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { initModal } from './modal.js';
-import { initCursor } from './cursor.js';
-import { initDecode } from './decode.js';
-import { initTilt, initMagnetic } from './tilt.js';
+import { details } from './data.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
+/* =============================================================
+   katti — scroll narrative with a 3D "system ball" centerpiece
+   that moves with the story and fires data packets up to katti.
+   ============================================================= */
+
 // ---------- Smooth scroll ----------
-const lenis = new Lenis({ duration: 1.2, smoothWheel: true });
+const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
 lenis.on('scroll', ScrollTrigger.update);
-gsap.ticker.add((time) => lenis.raf(time * 1000));
+gsap.ticker.add((t) => lenis.raf(t * 1000));
 gsap.ticker.lagSmoothing(0);
 
-const isMobile = window.matchMedia('(max-width: 980px)').matches
-              || window.matchMedia('(pointer: coarse)').matches;
-
-function hideLoader(delay = 0) {
-  const el = document.getElementById('loader');
-  if (!el) return;
-  setTimeout(() => el.classList.add('is-hidden'), delay);
+// ---------- Section snap: scrolling settles on each section ----------
+let snapT, snapping = false;
+function snapToNearest() {
+  if (snapping || document.getElementById('window').classList.contains('is-open')) return;
+  const panels = [...document.querySelectorAll('.panel')];
+  const y = lenis.scroll ?? window.scrollY, vh = window.innerHeight;
+  let best = null, bd = 1e9;
+  for (const p of panels) { const target = p.offsetTop + p.offsetHeight / 2 - vh / 2; const d = Math.abs(target - y); if (d < bd) { bd = d; best = target; } }
+  if (best != null && bd > 8) {
+    snapping = true;
+    lenis.scrollTo(best, { duration: 0.7, easing: (t) => 1 - Math.pow(1 - t, 3) });
+    setTimeout(() => { snapping = false; }, 780);
+  }
 }
+lenis.on('scroll', () => { clearTimeout(snapT); snapT = setTimeout(snapToNearest, 170); });
 
-// ---------- Plate parallax (both modes) ----------
-// Pan the painting slowly upward through the descent so the eye travels
-// from canopy → falls → pool. The beauty is in the image; we only move it.
-// The single stitched scene spans the whole document and scrolls as one layer.
-// Motion/life comes from the drifting mist, the marquee and the bird — not from
-// transforming this full-height plate (which would misalign the descent).
-
-if (!isMobile) {
-  bootBird();
-} else {
-  hideLoader(140);
+// ---------- Dossier window ----------
+const win = document.getElementById('window');
+const winId = document.getElementById('window-id');
+const winTitle = document.getElementById('window-title');
+const winBody = document.getElementById('window-body');
+function openDoc(key) {
+  const d = details[key]; if (!d) return;
+  winId.textContent = 'DOC · ' + key;
+  winTitle.textContent = d.title;
+  winBody.innerHTML = `<div class="win-doc"><span class="doc-tag">${d.tag}</span>${d.body}</div>`;
+  winBody.scrollTop = 0;
+  win.classList.add('is-open'); win.setAttribute('aria-hidden', 'false'); lenis.stop();
 }
+function closeWindow() { win.classList.remove('is-open'); win.setAttribute('aria-hidden', 'true'); lenis.start(); }
+document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('click', () => openDoc(el.dataset.doc)));
+win.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeWindow));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWindow(); });
+
+// ---------- Boot ----------
+const boot = document.getElementById('boot');
+const bootLine = document.getElementById('boot-line');
+const bootBar = boot.querySelector('.boot-bar span');
+const msgs = ['initialising…', 'mounting memory…', 'waking agents…', 'online'];
+let bi = 0;
+const bt = setInterval(() => { bi++; if (bootLine && bi < msgs.length) bootLine.textContent = msgs[bi]; }, 340);
+gsap.to(bootBar, { width: '100%', duration: 1.4, ease: 'power2.inOut', onComplete: () => {
+  clearInterval(bt); setTimeout(() => boot.classList.add('is-done'), 320);
+}});
 
 // ===========================================================
-// THE BIRD
-// A procedural low-poly dove on a transparent canvas above the
-// painted plate. It rides a single scroll timeline across 5 states:
-//   1 (0–20%)   glide-loop, top-right (over the canopy)
-//   2 (20–50%)  descend + bank, swing to the left corridor
-//   3 (50–80%)  swing back, track down the right of the falls
-//   4 (80–92%)  dive toward centre / the pool
-//   5 (92–100%) flare, fold wings, settle — perched idle
-// No procedural waterfall. No per-state allocation → no leaks.
+// THE BALL — a faceted "data core"
 // ===========================================================
+const canvas = document.getElementById('ball');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-function bootBird() {
-  const canvas = document.getElementById('bird');
-  if (!canvas) return;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+camera.position.set(0, 0, 6.2);
+function size() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+size(); addEventListener('resize', size);
 
-  const renderer = new THREE.WebGLRenderer({
-    canvas, antialias: true, alpha: true, powerPreference: 'high-performance',
-  });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(0x000000, 0); // transparent — plate shows through
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+scene.add(new THREE.AmbientLight(0x404a55, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 1.15); key.position.set(3, 4, 5); scene.add(key);
+const mint = new THREE.PointLight(0x6FE7CE, 1.5, 24); mint.position.set(-4, -1, 3); scene.add(mint);
+const cool = new THREE.PointLight(0x3a6ea5, 1.0, 24); cool.position.set(4, 2, -3); scene.add(cool);
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.set(0, 0, 11);
-  camera.lookAt(0, 0, 0);
-
-  function sizeRenderer() {
-    const w = window.innerWidth, h = window.innerHeight;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-  }
-  sizeRenderer();
-  window.addEventListener('resize', sizeRenderer);
-
-  // ---------- Light: warm key + cool shadow → origami two-tone like the paint
-  scene.add(new THREE.AmbientLight(0x3A4A60, 0.5));          // cool shadow fill
-  const key = new THREE.DirectionalLight(0xFFF1DC, 1.7);     // warm sun, front-up-right
-  key.position.set(4, 7, 7);
-  scene.add(key);
-  const cool = new THREE.DirectionalLight(0x6FA8DC, 0.85);   // cerulean shadow side
-  cool.position.set(-5, -1, 2);
-  scene.add(cool);
-
-  // ---------- Origami dove (matches the painted bird's faceted language) ----------
-  const doveMat = new THREE.MeshStandardMaterial({
-    color: 0xF4ECDD, roughness: 0.5, metalness: 0.0, flatShading: true,
-  });
-  const accentMat = new THREE.MeshStandardMaterial({
-    color: 0xD0848E, roughness: 0.6, flatShading: true, // rose beak
-  });
-
-  const dove = new THREE.Group();   // outer: world position + travel heading
-  const model = new THREE.Group();  // inner: the bird, body pointing +Y, facing camera
-  dove.add(model);
-
-  // Body — slim faceted diamond down the body axis (head +Y, tail -Y)
-  const body = new THREE.Mesh(new THREE.OctahedronGeometry(0.34, 0), doveMat);
-  body.scale.set(0.44, 1.08, 0.5);
-  model.add(body);
-
-  // Head + rose beak, at the top
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), doveMat);
-  head.position.set(0, 0.6, 0.05);
-  model.add(head);
-  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.18, 4), accentMat);
-  beak.position.set(0, 0.8, 0.06);
-  model.add(beak);
-
-  // Tail — forked fan pointing down
-  const tailShape = new THREE.Shape();
-  tailShape.moveTo(0, 0);
-  tailShape.lineTo(0.24, -0.62);
-  tailShape.lineTo(0, -0.44);
-  tailShape.lineTo(-0.24, -0.62);
-  tailShape.lineTo(0, 0);
-  const tail = new THREE.Mesh(new THREE.ShapeGeometry(tailShape), doveMat);
-  tail.position.set(0, -0.32, 0);
-  model.add(tail);
-
-  // Wings — spread to the sides (±X) in the facing plane → reads as a dove in
-  // flight. Flap rotates each wing about the body (Y) axis.
-  function makeWing(side) {
-    const s = side; // +1 right, -1 left
-    const shape = new THREE.Shape();
-    shape.moveTo(0, 0.10);
-    shape.lineTo(s * 0.7, 0.30);   // shoulder sweep
-    shape.lineTo(s * 1.7, 0.16);   // long swept tip (gull glide)
-    shape.lineTo(s * 1.55, -0.02);
-    shape.lineTo(s * 0.6, -0.14);
-    shape.lineTo(0, -0.05);
-    shape.lineTo(0, 0.10);
-    const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), doveMat);
-    const pivot = new THREE.Group();
-    pivot.position.set(s * 0.06, 0.12, 0);
-    pivot.add(m);
-    return pivot;
-  }
-  const wingL = makeWing(-1);
-  const wingR = makeWing(+1);
-  model.add(wingL, wingR);
-
-  // Present at a slight 3/4-from-above tilt so the wing-beat reads in 3D
-  model.rotation.x = -0.28;
-
-  dove.scale.setScalar(1.18);
-  scene.add(dove);
-
-  // ---------- A few drifting light motes (subtle atmosphere) ----------
-  const MOTES = 14;
-  const motePos = new Float32Array(MOTES * 3);
-  const moteSeed = [];
-  for (let i = 0; i < MOTES; i++) {
-    motePos[i * 3 + 0] = (Math.random() - 0.5) * 16;
-    motePos[i * 3 + 1] = (Math.random() - 0.5) * 12;
-    motePos[i * 3 + 2] = (Math.random() - 0.5) * 4 - 1;
-    moteSeed.push(Math.random() * 100);
-  }
-  const moteGeo = new THREE.BufferGeometry();
-  moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
-  const moteMat = new THREE.PointsMaterial({
-    color: 0xE8DEC6, size: 0.055, transparent: true, opacity: 0.42,
-    depthWrite: false, blending: THREE.AdditiveBlending,
-  });
-  const motes = new THREE.Points(moteGeo, moteMat);
-  scene.add(motes);
-
-  // ---------- The NAVIGATOR path ----------
-  // Fixed full-viewport canvas → x/y map to the screen. The dove descends with
-  // the scroll and weaves side to side (opposite the active section's text),
-  // leading the eye from one section into the next, then dives into the pool
-  // and lands. Heading is derived from velocity each frame → always faces travel.
-  const path = [
-    { p: 0.00, x:  3.4, y:  2.8, z: 1.0, flap: 1.0 }, // hero — upper right
-    { p: 0.20, x: -3.2, y:  1.8, z: 1.0, flap: 1.0 }, // sweep left → ABOUT
-    { p: 0.42, x:  3.2, y:  0.6, z: 1.0, flap: 1.0 }, // cross right → PROJECTS
-    { p: 0.62, x: -3.0, y: -0.8, z: 1.0, flap: 1.0 }, // cross left → EXPERIENCE
-    { p: 0.82, x:  2.3, y: -1.9, z: 1.1, flap: 0.95 },// right → toward CONTACT
-    { p: 0.92, x:  0.3, y: -2.8, z: 1.2, flap: 0.5 }, // dive to the pool
-    { p: 1.00, x: -0.2, y: -3.3, z: 1.2, flap: 0.0 }, // land in the pool
-  ];
-
-  const smooth = (t) => t * t * (3 - 2 * t);
-  function sample(p) {
-    for (let i = 0; i < path.length - 1; i++) {
-      const a = path[i], b = path[i + 1];
-      if (p >= a.p && p <= b.p) {
-        const t = smooth((p - a.p) / (b.p - a.p));
-        const k = (key) => a[key] + (b[key] - a[key]) * t;
-        return { x: k('x'), y: k('y'), z: k('z'), flap: k('flap') };
-      }
-    }
-    return { ...path[path.length - 1] };
-  }
-
-  const state = { p: 0 };
-  ScrollTrigger.create({
-    trigger: 'main', start: 'top top', end: 'bottom bottom', scrub: 1.0,
-    onUpdate: (self) => { state.p = self.progress; },
-  });
-
-  // ---------- Render loop ----------
-  let heading = -0.4; // current screen-plane facing (radians)
-  const clock = new THREE.Clock();
-  function tick() {
-    const t = clock.getElapsedTime();
-    const p = state.p;
-    const s = sample(p);
-
-    // Heading from path tangent → bird body (+Y) points along travel
-    const ahead = sample(Math.min(1, p + 0.02));
-    let dx = ahead.x - s.x, dy = ahead.y - s.y;
-    let target = (Math.hypot(dx, dy) > 0.0006) ? Math.atan2(dy, dx) - Math.PI / 2 : heading;
-    if (s.flap < 0.12) target = 0;               // perched: upright
-    let diff = ((target - heading + Math.PI) % (Math.PI * 2)) - Math.PI;
-    heading += diff * 0.10;                       // smooth, banked turn
-
-    // Position with gentle idle bob (fades as it perches)
-    dove.position.x = s.x + Math.sin(t * 0.6) * 0.10 * s.flap;
-    dove.position.y = s.y + Math.sin(t * 1.6) * 0.10 * s.flap;
-    dove.position.z = s.z;
-    dove.rotation.z = heading;
-
-    // Calm wing-beat about the body axis (gliding); tuck wings when perched
-    const beat = Math.sin(t * 5.0) * (0.38 * s.flap);
-    wingL.rotation.y =  beat + 0.04;
-    wingR.rotation.y = -beat - 0.04;
-    const fold = 1 - s.flap;
-    wingL.rotation.z =  fold * 0.45;
-    wingR.rotation.z = -fold * 0.45;
-
-    // Motes drift up slowly and wrap
-    const mp = moteGeo.attributes.position;
-    for (let i = 0; i < MOTES; i++) {
-      let y = mp.getY(i) + 0.004 + Math.sin(t * 0.3 + moteSeed[i]) * 0.0008;
-      let x = mp.getX(i) + Math.sin(t * 0.2 + moteSeed[i]) * 0.0015;
-      if (y > 6.5) y = -6.5;
-      mp.setY(i, y);
-      mp.setX(i, x);
-    }
-    mp.needsUpdate = true;
-    motes.rotation.z = Math.sin(t * 0.05) * 0.05;
-
-    renderer.render(scene, camera);
-    requestAnimationFrame(tick);
-  }
-  tick();
-
-  // ---------- Scroll hint fade ----------
-  const scrollHint = document.getElementById('scroll-hint');
-  if (scrollHint) {
-    ScrollTrigger.create({
-      trigger: 'main', start: 'top top', end: '5% top', scrub: 0.4,
-      onUpdate: (self) => { scrollHint.style.opacity = (1 - self.progress).toFixed(2); },
-    });
-  }
-
-  hideLoader(300);
+const ball = new THREE.Group();
+const ico = new THREE.IcosahedronGeometry(1.6, 2);
+const body = new THREE.Mesh(ico, new THREE.MeshStandardMaterial({ color: 0x0f141a, metalness: 0.65, roughness: 0.24, flatShading: true }));
+ball.add(body);
+const edges = new THREE.LineSegments(new THREE.EdgesGeometry(ico, 14), new THREE.LineBasicMaterial({ color: 0x6FE7CE, transparent: true, opacity: 0.32 }));
+ball.add(edges);
+const innerWire = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0, 1), new THREE.MeshBasicMaterial({ color: 0x163b33, wireframe: true, transparent: true, opacity: 0.45 }));
+ball.add(innerWire);
+// particle shell (the "data")
+const N = 150, ppos = new Float32Array(N * 3);
+for (let i = 0; i < N; i++) {
+  const u = Math.random(), v = Math.random(), th = 2 * Math.PI * u, ph = Math.acos(2 * v - 1), r = 2.0 + Math.random() * 0.35;
+  ppos[i * 3] = r * Math.sin(ph) * Math.cos(th); ppos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th); ppos[i * 3 + 2] = r * Math.cos(ph);
 }
+const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(ppos, 3));
+const shell = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x6FE7CE, size: 0.028, transparent: true, opacity: 0.7 }));
+ball.add(shell);
+scene.add(ball);
 
-// ===========================================================
-// THE MOVIE — one continuous scene, one layer of words at a time.
-// Each layer rises from the mist, sharpens at centre, then dissolves
-// and recedes as the next emerges. Scrubbed to scroll = film, not slides.
-// ===========================================================
-gsap.utils.toArray('.section').forEach((sec) => {
-  const inner = sec.querySelector('.hero-inner, .section-inner');
-  const ghost = sec.querySelector('.section-ghost');
-
-  // Content fades + sharpens in as it enters, then STAYS (continuous document,
-  // not a slideshow). The hero is left alone — it just shows and scrolls away.
-  if (inner && !sec.classList.contains('section--hero')) {
-    gsap.from(inner, {
-      scrollTrigger: { trigger: sec, start: 'top 78%', toggleActions: 'play none none none' },
-      opacity: 0, filter: 'blur(16px)', yPercent: 8,
-      duration: 1.0, ease: 'power3.out', clearProps: 'filter',
-    });
+// ---------- Scroll choreography ----------
+// content side: hero/contact centre; about/exp = content right → ball LEFT;
+// katti/projects = content left → ball RIGHT. ball rotates through the story.
+const steps = [
+  { p: 0.00, x:  0.0, y:  0.0, s: 1.00, ry: 0.0 }, // hero
+  { p: 0.20, x: -2.3, y: -0.1, s: 1.12, ry: 1.1 }, // about  (ball left)
+  { p: 0.40, x:  2.3, y:  0.1, s: 1.10, ry: 2.3 }, // katti  (ball right)
+  { p: 0.60, x: -2.3, y:  0.0, s: 1.10, ry: 3.5 }, // exp    (ball left)
+  { p: 0.80, x:  2.3, y:  0.0, s: 1.10, ry: 4.7 }, // proj   (ball right)
+  { p: 1.00, x:  0.0, y: -0.1, s: 1.28, ry: 5.9 }, // contact(centre, forward)
+];
+const sm = (t) => t * t * (3 - 2 * t);
+function sample(p) {
+  for (let i = 0; i < steps.length - 1; i++) {
+    const a = steps[i], b = steps[i + 1];
+    if (p >= a.p && p <= b.p) { const t = sm((p - a.p) / (b.p - a.p)); const k = (q) => a[q] + (b[q] - a[q]) * t; return { x: k('x'), y: k('y'), s: k('s'), ry: k('ry') }; }
   }
+  return { ...steps[steps.length - 1] };
+}
+const st = { p: 0 };
+ScrollTrigger.create({ trigger: 'main', start: 'top top', end: 'bottom bottom', scrub: 1, onUpdate: (self) => { st.p = self.progress; } });
 
-  // Ghost word drifts continuously through its section (parallax, stays present)
-  if (ghost) {
-    gsap.fromTo(ghost, { yPercent: 30 }, {
-      yPercent: -30, ease: 'none',
-      scrollTrigger: { trigger: sec, start: 'top bottom', end: 'bottom top', scrub: 1 },
-    });
-  }
+// content reveals
+gsap.utils.toArray('.panel').forEach((panel) => {
+  const items = panel.querySelectorAll('.content > *, .hero-id > *');
+  gsap.from(items, { scrollTrigger: { trigger: panel, start: 'top 68%', toggleActions: 'play none none reverse' }, y: 30, opacity: 0, filter: 'blur(8px)', duration: 0.8, stagger: 0.08, ease: 'power3.out' });
 });
 
-// ---------- Init helpers ----------
-initModal(lenis);
-initCursor();
-initDecode();
-initTilt();
-initMagnetic();
+// scroll cue fade
+const cue = document.getElementById('scroll-cue');
+ScrollTrigger.create({ trigger: 'main', start: 'top top', end: '6% top', scrub: 0.4, onUpdate: (s) => { cue.style.opacity = (1 - s.progress).toFixed(2); } });
+
+// ---------- Data packets: ball → katti ----------
+const packets = document.getElementById('packets');
+const brandPort = document.getElementById('brand-port');
+const cur = { x: 0, y: 0, s: 1, ry: 0 };
+function ballScreen() { const v = ball.position.clone(); v.project(camera); return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight }; }
+function flashPort() { brandPort.classList.add('hit'); setTimeout(() => brandPort.classList.remove('hit'), 160); }
+function spawnPacket() {
+  const r = brandPort.getBoundingClientRect();
+  const port = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  const b = ballScreen();
+  const reverse = Math.random() < 0.25;
+  const from = reverse ? port : b, to = reverse ? b : port;
+  const el = document.createElement('div'); el.className = 'packet'; packets.appendChild(el);
+  gsap.set(el, { x: from.x, y: from.y, opacity: 0 });
+  gsap.timeline({ onComplete: () => { el.remove(); if (!reverse) flashPort(); } })
+    .to(el, { opacity: 1, duration: 0.14 })
+    .to(el, { x: to.x, y: to.y, duration: 1.0, ease: 'power1.inOut' }, 0)
+    .to(el, { opacity: 0, duration: 0.22 }, '-=0.22');
+}
+let packetTimer = null;
+boot.addEventListener('transitionend', () => { if (!packetTimer) packetTimer = setInterval(spawnPacket, 900); });
+setTimeout(() => { if (!packetTimer) packetTimer = setInterval(spawnPacket, 900); }, 2600); // fallback
+
+// The ball "throws" each section's content — a packet-burst from the ball
+// toward the content as you arrive at each section (the knowledge base projecting).
+function spawnBurst(targetEl) {
+  if (!targetEl) return;
+  const r = targetEl.getBoundingClientRect();
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => {
+      const b = ballScreen();
+      const tx = r.left + r.width * (0.15 + Math.random() * 0.7);
+      const ty = r.top + r.height * (0.12 + Math.random() * 0.76);
+      const el = document.createElement('div'); el.className = 'packet packet--throw'; packets.appendChild(el);
+      gsap.set(el, { x: b.x, y: b.y, opacity: 0 });
+      gsap.timeline({ onComplete: () => el.remove() })
+        .to(el, { opacity: 1, duration: 0.12 })
+        .to(el, { x: tx, y: ty, duration: 0.72, ease: 'power2.out' }, 0)
+        .to(el, { opacity: 0, duration: 0.28 }, '-=0.22');
+    }, i * 55);
+  }
+}
+gsap.utils.toArray('.panel').forEach((panel) => {
+  ScrollTrigger.create({
+    trigger: panel, start: 'top 58%',
+    onEnter: () => spawnBurst(panel.querySelector('.content, .hero-id')),
+    onEnterBack: () => spawnBurst(panel.querySelector('.content, .hero-id')),
+  });
+});
+
+// ---------- Render ----------
+const clock = new THREE.Clock();
+function tick() {
+  const t = clock.getElapsedTime();
+  const s = sample(st.p);
+  cur.x += (s.x - cur.x) * 0.08;
+  cur.y += (s.y - cur.y) * 0.08;
+  cur.s += (s.s - cur.s) * 0.08;
+  cur.ry += (s.ry - cur.ry) * 0.08;
+  ball.position.x = cur.x;
+  ball.position.y = cur.y + Math.sin(t * 0.6) * 0.06;
+  ball.scale.setScalar(cur.s);
+  ball.rotation.y = cur.ry + t * 0.05;
+  ball.rotation.x = Math.sin(t * 0.2) * 0.12;
+  shell.rotation.y = -t * 0.08;
+  innerWire.rotation.x = t * 0.1;
+  edges.material.opacity = 0.28 + Math.sin(t * 1.5) * 0.1;
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
