@@ -18,6 +18,9 @@ dist-ssr
 # Local working notes / build docs — NOT part of the shipped site
 log.md
 
+# Retired asset (old nature design) — kept local, regenerable via stitch.mjs
+public/plate.png
+
 # Source & working images (AI mockups, references, screenshots) — not site assets
 Gemini_Generated_Image_*.png
 IMPORTANT STRUCTURE OF THINGS.png
