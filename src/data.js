@@ -12,7 +12,7 @@ export const details = {
 
       <h4>How I work</h4>
       <p>Architect first, engineer second — and closing that gap fast. I treat
-      a frontier LLM as my engineering team and I do the part that matters: scoping the
+      AI as my engineering team and I do the part that matters: scoping the
       real problem, designing the system, deciding what's worth building. I'd
       rather ship one ugly real thing than design a perfect one that never runs.
       Output over input — making beats consuming, every day.</p>
@@ -42,17 +42,17 @@ export const details = {
     title: 'katti-os',
     tag: 'Personal AI Operating System · multi-agent · in progress',
     body: `
-      <p>A persistent COO-style LLM (a frontier LLM Sonnet) orchestrating specialist project
-      agents (Haiku, Gemini) over a 3-layer memory system, with a council of local
+      <p>A persistent COO-style LLM (a frontier model) orchestrating specialist project
+      agents (small fast LLMs, Gemini) over a 3-layer memory system, with a council of local
       LLMs (Qwen, Gemma, Mistral, Phi, DeepSeek, Llama) acting as an
       anti-sycophancy verdict layer.</p>
 
       <h4>Architecture (outside-in)</h4>
       <ol>
         <li><strong>You (CEO)</strong> — WhatsApp + voice + dashboard interface.</li>
-        <li><strong>J (COO brain)</strong> — a frontier LLM Sonnet via API, runs 24/7 on
+        <li><strong>J (COO brain)</strong> — a frontier LLM via API, runs 24/7 on
           always-on laptop. Personality: direct, holds positions, never sycophantic.</li>
-        <li><strong>Project Boss agents</strong> — Haiku, one per major life area
+        <li><strong>Project Boss agents</strong> — a small fast LLM, one per major life area
           (income, study, health, repos).</li>
         <li><strong>Sub-agents</strong> — Gemini 2.0 Flash free tier, do actual work
           under their Project Boss.</li>
@@ -108,7 +108,7 @@ export const details = {
           context) OR Llama-3.1 70B. Locked prompt: cite section_id inline, refuse
           if context insufficient.</li>
         <li><strong>Agent D — Critic:</strong> Gemma-2 27B (local on T4 / HF
-          ZeroGPU) OR a frontier LLM 3.5. Verification: claim extraction → citation
+          ZeroGPU) OR a frontier LLM. Verification: claim extraction → citation
           lookup → contradiction check. Returns approve or CorrectionNote.
           Loop back to Drafter, max 2 hops.</li>
       </ul>
@@ -349,7 +349,7 @@ export const details = {
 
       <h4>What I'm working with</h4>
       <ul>
-        <li>a frontier LLM (Sonnet + Opus) as the engineering team. I'm the architect.</li>
+        <li>Frontier AI models as the engineering team. I'm the architect.</li>
         <li>Local compute: Ryzen 9 + RTX 4050 for dev, an i3 / 8GB as a 24/7
           server target.</li>
         <li>Free-tier inference where possible — Gemini, NVIDIA NIM, HF Spaces
