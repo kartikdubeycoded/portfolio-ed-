@@ -26,6 +26,16 @@ body {
 }
 ::selection { background: var(--accent); color: #06120E; }
 
+/* Cinematic depth: a vignette over the scene + a faint film grain. */
+html::before {
+  content: ''; position: fixed; inset: 0; z-index: 2; pointer-events: none;
+  background: radial-gradient(125% 95% at 50% 42%, transparent 52%, rgba(4,5,7,0.62) 100%);
+}
+html::after {
+  content: ''; position: fixed; inset: 0; z-index: 18; pointer-events: none; opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 /* Top + bottom scrims so scrolling content fades cleanly under the fixed
    chrome (brand / status / cue) instead of colliding with it. */
 body::before {
@@ -121,6 +131,17 @@ main { position: relative; z-index: 5; }
 .content { max-width: 470px; }
 .content--center { max-width: 620px; text-align: center; }
 
+/* About + Katti side by side — one screen, less scrolling */
+.panel--duo { justify-content: center; }
+.panel--duo .duo {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 7vw;
+  width: 100%; max-width: 1080px; align-items: center;
+}
+.panel--duo .content { max-width: 420px; }
+
+/* Compact panels — tighter, shorter, less vertical scroll */
+.panel--compact { min-height: 76vh; padding-top: 9vh; padding-bottom: 9vh; }
+
 .eyebrow { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); margin-bottom: 22px; display:flex; gap:10px; align-items:center; justify-content: inherit; }
 .panel--hero .eyebrow, .content--center .eyebrow { justify-content: center; }
 
@@ -207,6 +228,9 @@ h2 {
   .eyebrow, .panel .eyebrow { justify-content: center; }
   .body { max-width: 100%; margin-left: auto; margin-right: auto; }
   .row { justify-content: center; }
+  .panel--duo .duo { grid-template-columns: 1fr; gap: 7vh; max-width: 100%; }
+  .panel--duo .content { max-width: 100%; }
+  .panel--compact { min-height: auto; }
   #ball { opacity: 0.5; }   /* sits behind, content stays readable */
   .window-body { padding: 22px 20px 30px; }
 }

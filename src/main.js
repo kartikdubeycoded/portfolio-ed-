@@ -99,18 +99,23 @@ for (let i = 0; i < N; i++) {
 const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(ppos, 3));
 const shell = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x6FE7CE, size: 0.028, transparent: true, opacity: 0.7 }));
 ball.add(shell);
+// cinematic glow halo behind the core (additive, breathing)
+const glow = new THREE.Mesh(
+  new THREE.SphereGeometry(2.35, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0x163b33, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, side: THREE.BackSide }),
+);
+ball.add(glow);
 scene.add(ball);
 
 // ---------- Scroll choreography ----------
 // content side: hero/contact centre; about/exp = content right → ball LEFT;
 // katti/projects = content left → ball RIGHT. ball rotates through the story.
 const steps = [
-  { p: 0.00, x:  0.0, y:  0.0, s: 1.00, ry: 0.0 }, // hero
-  { p: 0.20, x: -2.3, y: -0.1, s: 1.12, ry: 1.1 }, // about  (ball left)
-  { p: 0.40, x:  2.3, y:  0.1, s: 1.10, ry: 2.3 }, // katti  (ball right)
-  { p: 0.60, x: -2.3, y:  0.0, s: 1.10, ry: 3.5 }, // exp    (ball left)
-  { p: 0.80, x:  2.3, y:  0.0, s: 1.10, ry: 4.7 }, // proj   (ball right)
-  { p: 1.00, x:  0.0, y: -0.1, s: 1.28, ry: 5.9 }, // contact(centre, forward)
+  { p: 0.00, x:  0.0, y:  0.0, s: 1.00, ry: 0.0 }, // hero (centre)
+  { p: 0.25, x:  0.0, y:  0.0, s: 0.80, ry: 1.4 }, // about+katti (centre, recede behind both columns)
+  { p: 0.52, x: -2.3, y:  0.0, s: 1.06, ry: 2.8 }, // internships (ball left)
+  { p: 0.76, x:  2.3, y:  0.0, s: 1.06, ry: 4.2 }, // projects (ball right)
+  { p: 1.00, x:  0.0, y: -0.1, s: 1.26, ry: 5.6 }, // contact (centre, forward)
 ];
 const sm = (t) => t * t * (3 - 2 * t);
 function sample(p) {

@@ -28,21 +28,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   </head>
   <body>
-    <!-- Boot -->
     <div class="boot" id="boot">
-      <div class="boot-mark">katti</div>
+      <div class="boot-mark">Kartik</div>
       <div class="boot-bar"><span></span></div>
       <div class="boot-line" id="boot-line">initialising…</div>
     </div>
 
-    <!-- The ball (fixed 3D centerpiece) -->
     <canvas id="ball"></canvas>
-
-    <!-- Data-packet layer (ball → katti) -->
     <div class="packets" id="packets" aria-hidden="true"></div>
 
-    <!-- Persistent chrome -->
-    <a class="brand" id="brand" href="#top">katti<span class="brand-port" id="brand-port"></span></a>
+    <a class="brand" id="brand" href="#top">Kartik<span class="brand-port" id="brand-port"></span></a>
     <div class="status"><span class="status-dot"></span><span>system online</span></div>
     <div class="scroll-cue" id="scroll-cue"><span>scroll</span><i></i></div>
 
@@ -56,44 +51,41 @@
         </div>
       </section>
 
-      <!-- ABOUT -->
-      <section class="panel panel--right" data-step="about">
-        <div class="content">
-          <p class="eyebrow">01 — About</p>
-          <h2>I think in systems, not scripts.</h2>
-          <p class="body">Give me a hard problem and the first thing that forms isn't a function — it's an architecture: the agents, the memory, the data flow, where it breaks. Architect first, engineer second, and closing that gap fast.</p>
-          <p class="body">Final-year B.Tech Data Science at Manipal University Jaipur. Based in Navi Mumbai.</p>
+      <!-- ABOUT + KATTI (side by side, one screen) -->
+      <section class="panel panel--duo" data-step="about">
+        <div class="duo">
+          <div class="content">
+            <p class="eyebrow">01 — About</p>
+            <h2>I think in systems, not scripts.</h2>
+            <p class="body">The first thing that forms isn't a function — it's an architecture: the agents, the memory, the data flow, where it breaks. Architect first, engineer second, closing that gap fast.</p>
+          </div>
+          <div class="content">
+            <p class="eyebrow">02 — Who</p>
+            <h2>Direct. Built to ship.</h2>
+            <p class="body">Final-year B.Tech Data Science, Navi Mumbai. Three internships in, allergic to busywork that ships nothing. I'd rather hear the truth than be managed.</p>
+            <button class="link-btn" data-doc="katti">more about me →</button>
+          </div>
         </div>
       </section>
 
-      <!-- KATTI -->
-      <section class="panel panel--left" data-step="katti">
+      <!-- INTERNSHIPS -->
+      <section class="panel panel--right panel--compact" data-step="experience">
         <div class="content">
-          <p class="eyebrow">02 — Katti</p>
-          <h2>Direct. Intense about the right things.</h2>
-          <p class="body">I'd rather hear the truth than be managed, and I give the same back. Allergic to busywork that looks productive but ships nothing. I finished a year-long industrial-RAG internship at TCS and turned down the return offer to build the work I actually want to be hired for — in public.</p>
-          <button class="link-btn" data-doc="katti">read the full note →</button>
-        </div>
-      </section>
-
-      <!-- EXPERIENCE -->
-      <section class="panel panel--right" data-step="experience">
-        <div class="content">
-          <p class="eyebrow">03 — Experience</p>
-          <h2>I ship the real thing.</h2>
+          <p class="eyebrow">03 — Internships</p>
+          <h2>Shipped work, three times over.</h2>
           <ul class="rows">
             <li class="row" data-doc="tcs"><span class="row-date">2025–26</span><span class="row-name">TCS · Industrial RAG</span><span class="row-go">→</span></li>
-            <li class="row" data-doc="reliance"><span class="row-date">2024–25</span><span class="row-name">Reliance · Churn + EDA</span><span class="row-go">→</span></li>
-            <li class="row" data-doc="independent"><span class="row-date">ongoing</span><span class="row-name">Independent</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="reliance"><span class="row-date">2024–25</span><span class="row-name">Reliance · Churn Prediction</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="reliance-retail"><span class="row-date">retail</span><span class="row-name">Reliance Retail · Risk &amp; Compliance</span><span class="row-go">→</span></li>
           </ul>
         </div>
       </section>
 
       <!-- PROJECTS -->
-      <section class="panel panel--left" data-step="projects">
+      <section class="panel panel--left panel--compact" data-step="projects">
         <div class="content">
           <p class="eyebrow">04 — Projects</p>
-          <h2>Four bets, built in public.</h2>
+          <h2>Four ideas worth building.</h2>
           <ul class="rows">
             <li class="row" data-doc="katti-os"><span class="row-idx">01</span><span class="row-name">katti-os</span><span class="row-go">→</span></li>
             <li class="row" data-doc="lexara"><span class="row-idx">02</span><span class="row-name">Lexara</span><span class="row-go">→</span></li>
@@ -106,7 +98,7 @@
       <!-- CONTACT -->
       <section class="panel panel--hero" data-step="contact">
         <div class="content content--center">
-          <p class="eyebrow">05 — Contact</p>
+          <p class="eyebrow">05 — Connect</p>
           <h2>Let's build something that runs.</h2>
           <div class="contact-links">
             <a href="mailto:kartikdubey1934@gmail.com">kartikdubey1934@gmail.com</a>
@@ -117,7 +109,6 @@
       </section>
     </main>
 
-    <!-- Dossier window -->
     <section class="window" id="window" aria-hidden="true" role="dialog">
       <div class="window-scrim" data-close></div>
       <div class="window-panel">
