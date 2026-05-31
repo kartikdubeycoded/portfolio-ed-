@@ -15,10 +15,11 @@ dist-ssr
 # Playwright screenshot output (dev-only; includes third-party reference captures)
 .shots
 
-# Local working notes / build docs — NOT part of the shipped site
-log.md
+# Local working notes / build docs — only README.md stays public
+/*.md
+!README.md
 
-# Retired asset (old nature design) — kept local, regenerable via stitch.mjs
+# Retired asset — kept local, regenerable
 public/plate.png
 
 # Source & working images (AI mockups, references, screenshots) — not site assets
