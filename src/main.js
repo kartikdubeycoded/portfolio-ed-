@@ -1,5 +1,8 @@
 import './style.css';
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -12,8 +15,13 @@ gsap.registerPlugin(ScrollTrigger);
    that moves with the story and fires data packets up to katti.
    ============================================================= */
 
-// ---------- Smooth scroll ----------
-const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+// ---------- Smooth scroll (heavy, buttery glide — expo decel) ----------
+const lenis = new Lenis({
+  duration: 1.25,
+  easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+  smoothWheel: true,
+  wheelMultiplier: 0.95,
+});
 lenis.on('scroll', ScrollTrigger.update);
 gsap.ticker.add((t) => lenis.raf(t * 1000));
 gsap.ticker.lagSmoothing(0);
@@ -52,81 +60,146 @@ document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('cli
 win.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeWindow));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWindow(); });
 
-// ---------- Boot ----------
+// ---------- Boot (the katti·os cold-start) ----------
 const boot = document.getElementById('boot');
-const bootLine = document.getElementById('boot-line');
+const bootLog = document.getElementById('boot-log');
 const bootBar = boot.querySelector('.boot-bar span');
-const msgs = ['initialising…', 'mounting memory…', 'waking agents…', 'online'];
+const bootPct = document.getElementById('boot-pct');
+
+// streaming system log — lines type themselves in, last one is the "online" line
+const bootSeq = [
+  'booting katti·os',
+  'mounting memory core',
+  'waking agent council',
+  'linking data bus',
+  'loading kartik.dubey',
+  'system online',
+];
 let bi = 0;
-const bt = setInterval(() => { bi++; if (bootLine && bi < msgs.length) bootLine.textContent = msgs[bi]; }, 340);
-gsap.to(bootBar, { width: '100%', duration: 1.4, ease: 'power2.inOut', onComplete: () => {
-  clearInterval(bt); setTimeout(() => boot.classList.add('is-done'), 320);
-}});
+function pushBootLine() {
+  if (bi >= bootSeq.length) return;
+  const final = bi === bootSeq.length - 1;
+  const row = document.createElement('div');
+  row.className = 'boot-row' + (final ? ' boot-row--final' : '');
+  row.innerHTML = `<span class="bt">${bootSeq[bi]}</span><span class="bk">${final ? '●' : 'ok'}</span>`;
+  bootLog.appendChild(row);
+  bi++;
+  if (bi < bootSeq.length) setTimeout(pushBootLine, 380);
+}
+pushBootLine();
+
+// progress bar + percentage, perfectly synced off one tween
+const bootProg = { v: 0 };
+gsap.to(bootProg, {
+  v: 100, duration: 2.4, ease: 'power2.inOut',
+  onUpdate: () => {
+    const p = Math.round(bootProg.v);
+    bootBar.style.width = p + '%';
+    bootPct.textContent = String(p).padStart(2, '0');
+  },
+  onComplete: () => { setTimeout(() => boot.classList.add('is-done'), 380); },
+});
 
 // ===========================================================
-// THE BALL — a faceted "data core"
+// THE WORLD — a flight THROUGH katti·os. The camera travels down
+// a corridor of glowing agent-nodes wired into a graph; fog hides
+// the depth so each cluster emerges from the dark as you scroll.
+// Procedural (no 3D assets) · bloom for the glow · heavy-eased dolly.
 // ===========================================================
 const canvas = document.getElementById('ball');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x05060A, 1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-camera.position.set(0, 0, 6.2);
-function size() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+scene.fog = new THREE.FogExp2(0x05060A, 0.0125);
+const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 400);
+camera.position.set(0, 0, 14);
+
+scene.add(new THREE.AmbientLight(0x35506a, 0.8));
+const key = new THREE.PointLight(0x6FE7CE, 2.2, 120); key.position.set(0, 0, 10); scene.add(key);
+
+// ---- build the graph corridor: five hubs = the five sections ----
+const HUBZ = [0, -50, -100, -150, -205];
+const hubs = HUBZ.map((z, i) => new THREE.Vector3(
+  i === 0 ? 0 : Math.sin(i * 1.7) * 9,
+  i === 0 ? 0 : Math.cos(i * 2.3) * 5,
+  z,
+));
+
+const nodeXYZ = [];
+const edgeXYZ = [];
+hubs.forEach((h, ci) => {
+  nodeXYZ.push(h.x, h.y, h.z);                       // the hub itself
+  for (let i = 0; i < 16; i++) {                     // its satellite agents
+    const a = Math.random() * Math.PI * 2;
+    const r = 4 + Math.random() * 11;
+    const v = new THREE.Vector3(
+      h.x + Math.cos(a) * r,
+      h.y + Math.sin(a) * r,
+      h.z + (Math.random() * 2 - 1) * 16,
+    );
+    nodeXYZ.push(v.x, v.y, v.z);
+    edgeXYZ.push(h.x, h.y, h.z, v.x, v.y, v.z);       // hub → satellite
+    if (i % 4 === 0 && ci < hubs.length - 1) {        // a few long forward links
+      const n = hubs[ci + 1];
+      edgeXYZ.push(v.x, v.y, v.z, n.x, n.y, n.z);
+    }
+  }
+  if (ci < hubs.length - 1) {                         // spine: hub → next hub
+    const n = hubs[ci + 1];
+    edgeXYZ.push(h.x, h.y, h.z, n.x, n.y, n.z);
+  }
+});
+
+const nodeGeo = new THREE.BufferGeometry();
+nodeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nodeXYZ), 3));
+const nodes = new THREE.Points(nodeGeo, new THREE.PointsMaterial({ color: 0x9FF4E2, size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.95 }));
+scene.add(nodes);
+
+const edgeGeo = new THREE.BufferGeometry();
+edgeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(edgeXYZ), 3));
+const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: 0x2f7d6e, transparent: true, opacity: 0.5 }));
+scene.add(edges);
+
+// faint far starfield for depth
+const STAR = 600, sxyz = new Float32Array(STAR * 3);
+for (let i = 0; i < STAR; i++) { sxyz[i*3] = (Math.random()*2-1)*60; sxyz[i*3+1] = (Math.random()*2-1)*40; sxyz[i*3+2] = -Math.random()*240; }
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(sxyz, 3));
+const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x49606e, size: 0.18, sizeAttenuation: true, transparent: true, opacity: 0.6 }));
+scene.add(stars);
+
+// data pulses racing the spine — the system thinking as you fly through it
+const PULSES = 22;
+const pulseXYZ = new Float32Array(PULSES * 3);
+const pulseState = Array.from({ length: PULSES }, () => ({ seg: Math.floor(Math.random() * (hubs.length - 1)), t: Math.random(), spd: 0.18 + Math.random() * 0.22 }));
+const pulseGeo = new THREE.BufferGeometry();
+pulseGeo.setAttribute('position', new THREE.BufferAttribute(pulseXYZ, 3));
+const pulses = new THREE.Points(pulseGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, sizeAttenuation: true, transparent: true, opacity: 1 }));
+scene.add(pulses);
+
+// ---- post-processing: bloom (the Lusion-grade glow) ----
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.7, 0.18);
+composer.addPass(bloom);
+
+function size() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  composer.setSize(innerWidth, innerHeight);
+  bloom.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+}
 size(); addEventListener('resize', size);
 
-scene.add(new THREE.AmbientLight(0x404a55, 0.7));
-const key = new THREE.DirectionalLight(0xffffff, 1.15); key.position.set(3, 4, 5); scene.add(key);
-const mint = new THREE.PointLight(0x6FE7CE, 1.5, 24); mint.position.set(-4, -1, 3); scene.add(mint);
-const cool = new THREE.PointLight(0x3a6ea5, 1.0, 24); cool.position.set(4, 2, -3); scene.add(cool);
-
-const ball = new THREE.Group();
-const ico = new THREE.IcosahedronGeometry(1.6, 2);
-const body = new THREE.Mesh(ico, new THREE.MeshStandardMaterial({ color: 0x0f141a, metalness: 0.65, roughness: 0.24, flatShading: true }));
-ball.add(body);
-const edges = new THREE.LineSegments(new THREE.EdgesGeometry(ico, 14), new THREE.LineBasicMaterial({ color: 0x6FE7CE, transparent: true, opacity: 0.32 }));
-ball.add(edges);
-const innerWire = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0, 1), new THREE.MeshBasicMaterial({ color: 0x163b33, wireframe: true, transparent: true, opacity: 0.45 }));
-ball.add(innerWire);
-// particle shell (the "data")
-const N = 150, ppos = new Float32Array(N * 3);
-for (let i = 0; i < N; i++) {
-  const u = Math.random(), v = Math.random(), th = 2 * Math.PI * u, ph = Math.acos(2 * v - 1), r = 2.0 + Math.random() * 0.35;
-  ppos[i * 3] = r * Math.sin(ph) * Math.cos(th); ppos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th); ppos[i * 3 + 2] = r * Math.cos(ph);
-}
-const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(ppos, 3));
-const shell = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x6FE7CE, size: 0.028, transparent: true, opacity: 0.7 }));
-ball.add(shell);
-// cinematic glow halo behind the core (additive, breathing)
-const glow = new THREE.Mesh(
-  new THREE.SphereGeometry(2.35, 32, 32),
-  new THREE.MeshBasicMaterial({ color: 0x163b33, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, side: THREE.BackSide }),
-);
-ball.add(glow);
-scene.add(ball);
-
-// ---------- Scroll choreography ----------
-// content side: hero/contact centre; about/exp = content right → ball LEFT;
-// katti/projects = content left → ball RIGHT. ball rotates through the story.
-const steps = [
-  { p: 0.00, x:  0.0, y:  0.0, s: 1.00, ry: 0.0 }, // hero (centre)
-  { p: 0.25, x:  0.0, y:  0.0, s: 0.80, ry: 1.4 }, // about+katti (centre, recede behind both columns)
-  { p: 0.52, x: -2.3, y:  0.0, s: 1.06, ry: 2.8 }, // internships (ball left)
-  { p: 0.76, x:  2.3, y:  0.0, s: 1.06, ry: 4.2 }, // projects (ball right)
-  { p: 1.00, x:  0.0, y: -0.1, s: 1.26, ry: 5.6 }, // contact (centre, forward)
-];
-const sm = (t) => t * t * (3 - 2 * t);
-function sample(p) {
-  for (let i = 0; i < steps.length - 1; i++) {
-    const a = steps[i], b = steps[i + 1];
-    if (p >= a.p && p <= b.p) { const t = sm((p - a.p) / (b.p - a.p)); const k = (q) => a[q] + (b[q] - a[q]) * t; return { x: k('x'), y: k('y'), s: k('s'), ry: k('ry') }; }
-  }
-  return { ...steps[steps.length - 1] };
-}
+// ---------- Scroll drives the camera dolly down the corridor ----------
 const st = { p: 0 };
 ScrollTrigger.create({ trigger: 'main', start: 'top top', end: 'bottom bottom', scrub: 1, onUpdate: (self) => { st.p = self.progress; } });
+
+const mouse = { x: 0, y: 0 };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX / innerWidth - 0.5; mouse.y = -(e.clientY / innerHeight - 0.5); });
 
 // content reveals
 gsap.utils.toArray('.panel').forEach((panel) => {
@@ -138,37 +211,38 @@ gsap.utils.toArray('.panel').forEach((panel) => {
 const cue = document.getElementById('scroll-cue');
 ScrollTrigger.create({ trigger: 'main', start: 'top top', end: '6% top', scrub: 0.4, onUpdate: (s) => { cue.style.opacity = (1 - s.progress).toFixed(2); } });
 
-// ---------- Data packets: ball → katti ----------
+// ---------- packets: the nearest hub feeds the katti identity ----------
 const packets = document.getElementById('packets');
 const brandPort = document.getElementById('brand-port');
-const cur = { x: 0, y: 0, s: 1, ry: 0 };
-function ballScreen() { const v = ball.position.clone(); v.project(camera); return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight }; }
+function nearestHubScreen() {
+  let best = hubs[0], bd = 1e9;
+  for (const h of hubs) { const d = Math.abs(h.z - camera.position.z); if (d < bd) { bd = d; best = h; } }
+  const v = best.clone().project(camera);
+  return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+}
 function flashPort() { brandPort.classList.add('hit'); setTimeout(() => brandPort.classList.remove('hit'), 160); }
 function spawnPacket() {
   const r = brandPort.getBoundingClientRect();
   const port = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  const b = ballScreen();
-  const reverse = Math.random() < 0.25;
-  const from = reverse ? port : b, to = reverse ? b : port;
+  const b = nearestHubScreen();
   const el = document.createElement('div'); el.className = 'packet'; packets.appendChild(el);
-  gsap.set(el, { x: from.x, y: from.y, opacity: 0 });
-  gsap.timeline({ onComplete: () => { el.remove(); if (!reverse) flashPort(); } })
+  gsap.set(el, { x: b.x, y: b.y, opacity: 0 });
+  gsap.timeline({ onComplete: () => { el.remove(); flashPort(); } })
     .to(el, { opacity: 1, duration: 0.14 })
-    .to(el, { x: to.x, y: to.y, duration: 1.0, ease: 'power1.inOut' }, 0)
+    .to(el, { x: port.x, y: port.y, duration: 1.0, ease: 'power1.inOut' }, 0)
     .to(el, { opacity: 0, duration: 0.22 }, '-=0.22');
 }
 let packetTimer = null;
-boot.addEventListener('transitionend', () => { if (!packetTimer) packetTimer = setInterval(spawnPacket, 900); });
-setTimeout(() => { if (!packetTimer) packetTimer = setInterval(spawnPacket, 900); }, 2600); // fallback
+boot.addEventListener('transitionend', () => { if (!packetTimer) packetTimer = setInterval(spawnPacket, 1100); });
+setTimeout(() => { if (!packetTimer) packetTimer = setInterval(spawnPacket, 1100); }, 3200); // fallback
 
-// The ball "throws" each section's content — a packet-burst from the ball
-// toward the content as you arrive at each section (the knowledge base projecting).
+// burst into each section's content as you arrive at its cluster
 function spawnBurst(targetEl) {
   if (!targetEl) return;
   const r = targetEl.getBoundingClientRect();
   for (let i = 0; i < 8; i++) {
     setTimeout(() => {
-      const b = ballScreen();
+      const b = nearestHubScreen();
       const tx = r.left + r.width * (0.15 + Math.random() * 0.7);
       const ty = r.top + r.height * (0.12 + Math.random() * 0.76);
       const el = document.createElement('div'); el.className = 'packet packet--throw'; packets.appendChild(el);
@@ -190,22 +264,36 @@ gsap.utils.toArray('.panel').forEach((panel) => {
 
 // ---------- Render ----------
 const clock = new THREE.Clock();
+let elapsed = 0, camZ = 14;
+const ZSTART = 12, ZEND = HUBZ[HUBZ.length - 1] + 16; // fly from front to past the last hub
 function tick() {
-  const t = clock.getElapsedTime();
-  const s = sample(st.p);
-  cur.x += (s.x - cur.x) * 0.08;
-  cur.y += (s.y - cur.y) * 0.08;
-  cur.s += (s.s - cur.s) * 0.08;
-  cur.ry += (s.ry - cur.ry) * 0.08;
-  ball.position.x = cur.x;
-  ball.position.y = cur.y + Math.sin(t * 0.6) * 0.06;
-  ball.scale.setScalar(cur.s);
-  ball.rotation.y = cur.ry + t * 0.05;
-  ball.rotation.x = Math.sin(t * 0.2) * 0.12;
-  shell.rotation.y = -t * 0.08;
-  innerWire.rotation.x = t * 0.1;
-  edges.material.opacity = 0.28 + Math.sin(t * 1.5) * 0.1;
-  renderer.render(scene, camera);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt; const t = elapsed;
+
+  // smooth camera dolly down the corridor (heavy ease = Lusion glide)
+  const targetZ = ZSTART + (ZEND - ZSTART) * st.p;
+  camZ += (targetZ - camZ) * 0.06;
+  camera.position.z = camZ;
+  camera.position.x += (mouse.x * 4 - camera.position.x) * 0.04;
+  camera.position.y += (mouse.y * 2.5 - camera.position.y) * 0.04;
+  camera.lookAt(mouse.x * 2, mouse.y * 1.5, camZ - 40);
+
+  // twinkle the node field
+  nodes.material.opacity = 0.8 + Math.sin(t * 1.5) * 0.15;
+
+  // race the pulses along the spine
+  for (let i = 0; i < PULSES; i++) {
+    const ps = pulseState[i];
+    ps.t += ps.spd * dt;
+    if (ps.t > 1) { ps.t = 0; ps.seg = (ps.seg + 1) % (hubs.length - 1); }
+    const a = hubs[ps.seg], b = hubs[ps.seg + 1];
+    pulseXYZ[i*3] = a.x + (b.x - a.x) * ps.t;
+    pulseXYZ[i*3+1] = a.y + (b.y - a.y) * ps.t;
+    pulseXYZ[i*3+2] = a.z + (b.z - a.z) * ps.t;
+  }
+  pulseGeo.attributes.position.needsUpdate = true;
+
+  composer.render();
   requestAnimationFrame(tick);
 }
 tick();
