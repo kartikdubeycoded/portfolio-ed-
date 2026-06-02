@@ -15,9 +15,13 @@ dist-ssr
 # Playwright screenshot output (dev-only; includes third-party reference captures)
 .shots
 
-# Local working notes / build docs — only README.md stays public
+# Local working notes / build docs — only README.md + CREDITS.md stay public
 /*.md
 !README.md
+!CREDITS.md
+
+# Scratch dir (raw/intermediate model compression — large, local-only)
+tmp/
 
 # Retired asset — kept local, regenerable
 public/plate.png

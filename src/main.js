@@ -1,8 +1,12 @@
 import './style.css';
 import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import {
+  EffectComposer, RenderPass, EffectPass,
+  BloomEffect, VignetteEffect, NoiseEffect, SMAAEffect, SMAAPreset, BlendFunction,
+} from 'postprocessing';
 import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -11,13 +15,15 @@ import { details } from './data.js';
 gsap.registerPlugin(ScrollTrigger);
 
 /* =============================================================
-   katti — scroll narrative with a 3D "system ball" centerpiece
-   that moves with the story and fires data packets up to katti.
+   Kartik Dubey — "navigating the system."
+   A single astronaut (you) floats through a clean cream space.
+   Scroll drifts him between waypoints; grab him to spin 360°.
+   Vanilla three.js · IBL-lit PBR · pmndrs filmic post.
    ============================================================= */
 
 // ---------- Smooth scroll (heavy, buttery glide — expo decel) ----------
 const lenis = new Lenis({
-  duration: 1.25,
+  duration: 1.3,
   easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
   smoothWheel: true,
   wheelMultiplier: 0.95,
@@ -42,21 +48,34 @@ function snapToNearest() {
 }
 lenis.on('scroll', () => { clearTimeout(snapT); snapT = setTimeout(snapToNearest, 170); });
 
-// ---------- Dossier window ----------
+// ---------- Dossier window (pops out from the clicked element) ----------
 const win = document.getElementById('window');
 const winId = document.getElementById('window-id');
 const winTitle = document.getElementById('window-title');
 const winBody = document.getElementById('window-body');
-function openDoc(key) {
+const winPanel = win.querySelector('.window-panel');
+function openDoc(key, originEl) {
   const d = details[key]; if (!d) return;
   winId.textContent = 'DOC · ' + key;
   winTitle.textContent = d.title;
   winBody.innerHTML = `<div class="win-doc"><span class="doc-tag">${d.tag}</span>${d.body}</div>`;
   winBody.scrollTop = 0;
   win.classList.add('is-open'); win.setAttribute('aria-hidden', 'false'); lenis.stop();
+
+  // pop the panel out FROM the thing you clicked → grow to center
+  const o = originEl ? originEl.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 2, width: 0, height: 0 };
+  const cx = o.left + o.width / 2 - innerWidth / 2;
+  const cy = o.top + o.height / 2 - innerHeight / 2;
+  gsap.fromTo(winPanel,
+    { x: cx * 0.6, y: cy * 0.6, scale: 0.5, opacity: 0, filter: 'blur(14px)' },
+    { x: 0, y: 0, scale: 1, opacity: 1, filter: 'blur(0px)', duration: 0.62, ease: 'expo.out' });
 }
-function closeWindow() { win.classList.remove('is-open'); win.setAttribute('aria-hidden', 'true'); lenis.start(); }
-document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('click', () => openDoc(el.dataset.doc)));
+function closeWindow() {
+  win.setAttribute('aria-hidden', 'true'); lenis.start();
+  gsap.to(winPanel, { scale: 0.7, opacity: 0, filter: 'blur(10px)', duration: 0.3, ease: 'power2.in',
+    onComplete: () => { win.classList.remove('is-open'); gsap.set(winPanel, { clearProps: 'all' }); } });
+}
+document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('click', () => openDoc(el.dataset.doc, el)));
 win.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeWindow));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWindow(); });
 
@@ -65,16 +84,7 @@ const boot = document.getElementById('boot');
 const bootLog = document.getElementById('boot-log');
 const bootBar = boot.querySelector('.boot-bar span');
 const bootPct = document.getElementById('boot-pct');
-
-// streaming system log — lines type themselves in, last one is the "online" line
-const bootSeq = [
-  'booting katti·os',
-  'mounting memory core',
-  'waking agent council',
-  'linking data bus',
-  'loading kartik.dubey',
-  'system online',
-];
+const bootSeq = ['booting katti·os', 'mounting memory core', 'waking agent council', 'linking data bus', 'loading kartik.dubey', 'system online'];
 let bi = 0;
 function pushBootLine() {
   if (bi >= bootSeq.length) return;
@@ -87,117 +97,108 @@ function pushBootLine() {
   if (bi < bootSeq.length) setTimeout(pushBootLine, 380);
 }
 pushBootLine();
-
-// progress bar + percentage, perfectly synced off one tween
 const bootProg = { v: 0 };
 gsap.to(bootProg, {
   v: 100, duration: 2.4, ease: 'power2.inOut',
-  onUpdate: () => {
-    const p = Math.round(bootProg.v);
-    bootBar.style.width = p + '%';
-    bootPct.textContent = String(p).padStart(2, '0');
-  },
+  onUpdate: () => { const p = Math.round(bootProg.v); bootBar.style.width = p + '%'; bootPct.textContent = String(p).padStart(2, '0'); },
   onComplete: () => { setTimeout(() => boot.classList.add('is-done'), 380); },
 });
 
 // ===========================================================
-// THE WORLD — a flight THROUGH katti·os. The camera travels down
-// a corridor of glowing agent-nodes wired into a graph; fog hides
-// the depth so each cluster emerges from the dark as you scroll.
-// Procedural (no 3D assets) · bloom for the glow · heavy-eased dolly.
+// THE WORLD — a cream void with one floating astronaut.
 // ===========================================================
 const canvas = document.getElementById('ball');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setClearColor(0x05060A, 1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 
+const CREAM = 0xF4F1EA;
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x05060A, 0.0125);
-const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 400);
-camera.position.set(0, 0, 14);
+scene.background = new THREE.Color(CREAM);
+scene.fog = new THREE.Fog(CREAM, 8, 26);
 
-scene.add(new THREE.AmbientLight(0x35506a, 0.8));
-const key = new THREE.PointLight(0x6FE7CE, 2.2, 120); key.position.set(0, 0, 10); scene.add(key);
+const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+camera.position.set(0, 0, 7.2);
 
-// ---- build the graph corridor: five hubs = the five sections ----
-const HUBZ = [0, -50, -100, -150, -205];
-const hubs = HUBZ.map((z, i) => new THREE.Vector3(
-  i === 0 ? 0 : Math.sin(i * 1.7) * 9,
-  i === 0 ? 0 : Math.cos(i * 2.3) * 5,
-  z,
-));
+// image-based lighting → makes the PBR materials read "rendered"
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-const nodeXYZ = [];
-const edgeXYZ = [];
-hubs.forEach((h, ci) => {
-  nodeXYZ.push(h.x, h.y, h.z);                       // the hub itself
-  for (let i = 0; i < 16; i++) {                     // its satellite agents
-    const a = Math.random() * Math.PI * 2;
-    const r = 4 + Math.random() * 11;
-    const v = new THREE.Vector3(
-      h.x + Math.cos(a) * r,
-      h.y + Math.sin(a) * r,
-      h.z + (Math.random() * 2 - 1) * 16,
-    );
-    nodeXYZ.push(v.x, v.y, v.z);
-    edgeXYZ.push(h.x, h.y, h.z, v.x, v.y, v.z);       // hub → satellite
-    if (i % 4 === 0 && ci < hubs.length - 1) {        // a few long forward links
-      const n = hubs[ci + 1];
-      edgeXYZ.push(v.x, v.y, v.z, n.x, n.y, n.z);
-    }
-  }
-  if (ci < hubs.length - 1) {                         // spine: hub → next hub
-    const n = hubs[ci + 1];
-    edgeXYZ.push(h.x, h.y, h.z, n.x, n.y, n.z);
-  }
-});
+// shaping light + soft fill (gives the suit form and a soft shadow side)
+const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(4, 6, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0xffffff, 1.1); rim.position.set(-5, 2, -4); scene.add(rim);
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
 
-const nodeGeo = new THREE.BufferGeometry();
-nodeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nodeXYZ), 3));
-const nodes = new THREE.Points(nodeGeo, new THREE.PointsMaterial({ color: 0x9FF4E2, size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.95 }));
-scene.add(nodes);
+// ---- the astronaut ----
+const pivot = new THREE.Group();            // we spin THIS on drag
+const drift = new THREE.Group();            // scroll moves THIS across the space
+drift.add(pivot); scene.add(drift);
 
-const edgeGeo = new THREE.BufferGeometry();
-edgeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(edgeXYZ), 3));
-const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: 0x2f7d6e, transparent: true, opacity: 0.5 }));
-scene.add(edges);
+let mixer = null, actions = {}, current = null, astronaut = null, ready = false;
+function play(name, { loop = true, fade = 0.4 } = {}) {
+  const next = actions[name]; if (!next || next === current) return;
+  next.reset();
+  next.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
+  next.clampWhenFinished = !loop;
+  next.fadeIn(fade).play();
+  if (current) current.fadeOut(fade);
+  current = next;
+}
 
-// faint far starfield for depth
-const STAR = 600, sxyz = new Float32Array(STAR * 3);
-for (let i = 0; i < STAR; i++) { sxyz[i*3] = (Math.random()*2-1)*60; sxyz[i*3+1] = (Math.random()*2-1)*40; sxyz[i*3+2] = -Math.random()*240; }
-const starGeo = new THREE.BufferGeometry();
-starGeo.setAttribute('position', new THREE.BufferAttribute(sxyz, 3));
-const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x49606e, size: 0.18, sizeAttenuation: true, transparent: true, opacity: 0.6 }));
-scene.add(stars);
+// Astronaut: "Animated Floating Astronaut in Space Suit Loop" by LasquetiSpice,
+// CC BY 4.0 — https://sketchfab.com/3d-models/animated-floating-astronaut-in-space-suit-loop-e2c4b146e58141e4b87917456a9970b1
+// (compressed via @gltf-transform). See CREDITS.md.
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+const gltf = new GLTFLoader();
+gltf.setDRACOLoader(draco);
+gltf.load('/astronaut.glb', (g) => {
+  astronaut = g.scene;
+  // scale to a friendly height first
+  const box = new THREE.Box3().setFromObject(astronaut);
+  const size = new THREE.Vector3(); box.getSize(size);
+  const s = 2.2 / size.y; astronaut.scale.setScalar(s);
+  pivot.add(astronaut);
 
-// data pulses racing the spine — the system thinking as you fly through it
-const PULSES = 22;
-const pulseXYZ = new Float32Array(PULSES * 3);
-const pulseState = Array.from({ length: PULSES }, () => ({ seg: Math.floor(Math.random() * (hubs.length - 1)), t: Math.random(), spd: 0.18 + Math.random() * 0.22 }));
-const pulseGeo = new THREE.BufferGeometry();
-pulseGeo.setAttribute('position', new THREE.BufferAttribute(pulseXYZ, 3));
-const pulses = new THREE.Points(pulseGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, sizeAttenuation: true, transparent: true, opacity: 1 }));
-scene.add(pulses);
+  mixer = new THREE.AnimationMixer(astronaut);
+  g.animations.forEach((clip) => { actions[clip.name] = mixer.clipAction(clip); });
+  play('floating');
+  // recenter using the ANIMATED pose (the float clip has root motion that
+  // would otherwise lift him out of frame) → put his visual center at origin
+  mixer.update(0);
+  const b2 = new THREE.Box3().setFromObject(astronaut);
+  const c2 = new THREE.Vector3(); b2.getCenter(c2);
+  astronaut.position.x -= c2.x; astronaut.position.y -= c2.y; astronaut.position.z -= c2.z;
+  ready = true;
 
-// ---- post-processing: bloom (the Lusion-grade glow) ----
+  // entrance: scale-pop as the boot dissolves
+  gsap.from(pivot.scale, { x: 0.01, y: 0.01, z: 0.01, duration: 1.5, ease: 'expo.out', delay: 0.2 });
+  spin.y = -1.4; // start turned, idle-eases to front
+}, undefined, (err) => console.error('astronaut load failed', err));
+
+// ---- post-processing: filmic finish (pmndrs) ----
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.7, 0.18);
-composer.addPass(bloom);
+const bloom = new BloomEffect({ intensity: 0.5, luminanceThreshold: 0.9, luminanceSmoothing: 0.3, mipmapBlur: true });
+const vignette = new VignetteEffect({ offset: 0.32, darkness: 0.46 });
+const grain = new NoiseEffect({ blendFunction: BlendFunction.OVERLAY }); grain.blendMode.opacity.value = 0.045;
+const smaa = new SMAAEffect({ preset: SMAAPreset.HIGH });
+composer.addPass(new EffectPass(camera, smaa, bloom, vignette, grain));
 
 function size() {
   renderer.setSize(innerWidth, innerHeight, false);
   composer.setSize(innerWidth, innerHeight);
-  bloom.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
 }
 size(); addEventListener('resize', size);
 
-// ---------- Scroll drives the camera dolly down the corridor ----------
+// ---------- Scroll drives where the astronaut drifts ----------
 const st = { p: 0 };
 ScrollTrigger.create({ trigger: 'main', start: 'top top', end: 'bottom bottom', scrub: 1, onUpdate: (self) => { st.p = self.progress; } });
 
+// pointer parallax (camera breathes with the mouse)
 const mouse = { x: 0, y: 0 };
 addEventListener('pointermove', (e) => { mouse.x = e.clientX / innerWidth - 0.5; mouse.y = -(e.clientY / innerHeight - 0.5); });
 
@@ -211,89 +212,85 @@ gsap.utils.toArray('.panel').forEach((panel) => {
 const cue = document.getElementById('scroll-cue');
 ScrollTrigger.create({ trigger: 'main', start: 'top top', end: '6% top', scrub: 0.4, onUpdate: (s) => { cue.style.opacity = (1 - s.progress).toFixed(2); } });
 
-// ---------- packets: the nearest hub feeds the katti identity ----------
-const packets = document.getElementById('packets');
-const brandPort = document.getElementById('brand-port');
-function nearestHubScreen() {
-  let best = hubs[0], bd = 1e9;
-  for (const h of hubs) { const d = Math.abs(h.z - camera.position.z); if (d < bd) { bd = d; best = h; } }
-  const v = best.clone().project(camera);
-  return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
-}
-function flashPort() { brandPort.classList.add('hit'); setTimeout(() => brandPort.classList.remove('hit'), 160); }
-function spawnPacket() {
-  const r = brandPort.getBoundingClientRect();
-  const port = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  const b = nearestHubScreen();
-  const el = document.createElement('div'); el.className = 'packet'; packets.appendChild(el);
-  gsap.set(el, { x: b.x, y: b.y, opacity: 0 });
-  gsap.timeline({ onComplete: () => { el.remove(); flashPort(); } })
-    .to(el, { opacity: 1, duration: 0.14 })
-    .to(el, { x: port.x, y: port.y, duration: 1.0, ease: 'power1.inOut' }, 0)
-    .to(el, { opacity: 0, duration: 0.22 }, '-=0.22');
-}
-let packetTimer = null;
-boot.addEventListener('transitionend', () => { if (!packetTimer) packetTimer = setInterval(spawnPacket, 1100); });
-setTimeout(() => { if (!packetTimer) packetTimer = setInterval(spawnPacket, 1100); }, 3200); // fallback
+// ---------- Grab the astronaut → spin him 360° (with a wave hello) ----------
+const ray = new THREE.Raycaster();
+const ptr = new THREE.Vector2();
+let dragging = false, lastX = 0, lastY = 0, velY = 0, velX = 0, waved = false, moved = 0;
+const spin = { y: 0, x: 0 };
 
-// burst into each section's content as you arrive at its cluster
-function spawnBurst(targetEl) {
-  if (!targetEl) return;
-  const r = targetEl.getBoundingClientRect();
-  for (let i = 0; i < 8; i++) {
-    setTimeout(() => {
-      const b = nearestHubScreen();
-      const tx = r.left + r.width * (0.15 + Math.random() * 0.7);
-      const ty = r.top + r.height * (0.12 + Math.random() * 0.76);
-      const el = document.createElement('div'); el.className = 'packet packet--throw'; packets.appendChild(el);
-      gsap.set(el, { x: b.x, y: b.y, opacity: 0 });
-      gsap.timeline({ onComplete: () => el.remove() })
-        .to(el, { opacity: 1, duration: 0.12 })
-        .to(el, { x: tx, y: ty, duration: 0.72, ease: 'power2.out' }, 0)
-        .to(el, { opacity: 0, duration: 0.28 }, '-=0.22');
-    }, i * 55);
-  }
+function hitAstronaut(clientX, clientY) {
+  if (!astronaut) return false;
+  ptr.x = (clientX / innerWidth) * 2 - 1;
+  ptr.y = -(clientY / innerHeight) * 2 + 1;
+  ray.setFromCamera(ptr, camera);
+  return ray.intersectObject(astronaut, true).length > 0;
 }
-gsap.utils.toArray('.panel').forEach((panel) => {
-  ScrollTrigger.create({
-    trigger: panel, start: 'top 58%',
-    onEnter: () => spawnBurst(panel.querySelector('.content, .hero-id')),
-    onEnterBack: () => spawnBurst(panel.querySelector('.content, .hero-id')),
-  });
+canvas.addEventListener('pointerdown', (e) => {
+  if (!ready || !hitAstronaut(e.clientX, e.clientY)) return;
+  dragging = true; lastX = e.clientX; lastY = e.clientY; velY = velX = 0; moved = 0;
+  waved = true;                       // stop the pre-touch showcase turn
+  if (mixer) mixer.timeScale = 0;     // freeze the bob → spin cleanly in place about his center
+  canvas.classList.add('grabbing');
+});
+addEventListener('pointermove', (e) => {
+  if (!dragging) {
+    canvas.classList.toggle('grab', ready && hitAstronaut(e.clientX, e.clientY));
+    return;
+  }
+  velY = (e.clientX - lastX) * 0.01; velX = (e.clientY - lastY) * 0.01;
+  spin.y += velY; spin.x += velX;     // FULL 360° on both axes — no clamp
+  moved += Math.abs(e.clientX - lastX) + Math.abs(e.clientY - lastY);
+  lastX = e.clientX; lastY = e.clientY;
+});
+addEventListener('pointerup', () => {
+  if (!dragging) return;
+  dragging = false; canvas.classList.remove('grabbing');
+  if (mixer) mixer.timeScale = 1;     // resume life
+  if (moved < 6) play('wave', { loop: false, fade: 0.2 });  // a tap (no drag) = he waves hello
+  else play('floating');              // a drag = keep the orientation, resume floating
 });
 
 // ---------- Render ----------
 const clock = new THREE.Clock();
-let elapsed = 0, camZ = 14;
-const ZSTART = 12, ZEND = HUBZ[HUBZ.length - 1] + 16; // fly from front to past the last hub
+let elapsed = 0;
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
   elapsed += dt; const t = elapsed;
+  if (mixer) mixer.update(dt);
 
-  // smooth camera dolly down the corridor (heavy ease = Lusion glide)
-  const targetZ = ZSTART + (ZEND - ZSTART) * st.p;
-  camZ += (targetZ - camZ) * 0.06;
-  camera.position.z = camZ;
-  camera.position.x += (mouse.x * 4 - camera.position.x) * 0.04;
-  camera.position.y += (mouse.y * 2.5 - camera.position.y) * 0.04;
-  camera.lookAt(mouse.x * 2, mouse.y * 1.5, camZ - 40);
+  // when the wave finishes, fall back to floating
+  if (current && current.getClip && current.getClip().name === 'wave' && !current.isRunning()) play('floating');
 
-  // twinkle the node field
-  nodes.material.opacity = 0.8 + Math.sin(t * 1.5) * 0.15;
-
-  // race the pulses along the spine
-  for (let i = 0; i < PULSES; i++) {
-    const ps = pulseState[i];
-    ps.t += ps.spd * dt;
-    if (ps.t > 1) { ps.t = 0; ps.seg = (ps.seg + 1) % (hubs.length - 1); }
-    const a = hubs[ps.seg], b = hubs[ps.seg + 1];
-    pulseXYZ[i*3] = a.x + (b.x - a.x) * ps.t;
-    pulseXYZ[i*3+1] = a.y + (b.y - a.y) * ps.t;
-    pulseXYZ[i*3+2] = a.z + (b.z - a.z) * ps.t;
+  // ---- the astronaut FLOATS — a continuous wavy zero-g drift; the cursor nudges it ----
+  if (!dragging) {
+    const wx = Math.sin(t * 0.5) * 1.2 + Math.cos(t * 0.33) * 0.6;   // figure-8 wander
+    const wy = Math.sin(t * 0.43) * 0.6 + Math.cos(t * 0.27) * 0.3;
+    const baseX = Math.sin(st.p * Math.PI * 2.0) * 0.5;
+    const baseY = 0.4 + Math.cos(st.p * Math.PI * 1.3) * 0.25;
+    const tx = baseX + wx + mouse.x * 2.8;   // cursor nudges where he wanders
+    const ty = baseY + wy + mouse.y * 1.6;
+    drift.position.x += (tx - drift.position.x) * 0.05;
+    drift.position.y += (ty - drift.position.y) * 0.05;
+    // wavy roll/lean — banks into the drift and toward the cursor
+    drift.rotation.z += ((-mouse.x * 0.22 + Math.sin(t * 0.4) * 0.14) - drift.rotation.z) * 0.05;
+    drift.rotation.x += (( mouse.y * 0.16 + Math.cos(t * 0.5) * 0.09) - drift.rotation.x) * 0.05;
   }
-  pulseGeo.attributes.position.needsUpdate = true;
 
-  composer.render();
+  // continuous slow 360 turn (always alive) + coast from your flicks
+  if (!dragging) {
+    spin.y += velY; velY *= 0.94;
+    spin.x += velX; velX *= 0.94;
+    spin.y += 0.0045;   // perpetual full-circle turn
+  }
+  pivot.rotation.y += (spin.y - pivot.rotation.y) * (dragging ? 0.45 : 0.14);
+  pivot.rotation.x += (spin.x - pivot.rotation.x) * (dragging ? 0.45 : 0.14);
+
+  // camera breathes very slightly opposite (depth) — the astronaut does the moving now
+  camera.position.x += (-mouse.x * 0.5 - camera.position.x) * 0.04;
+  camera.position.y += (-mouse.y * 0.35 - camera.position.y) * 0.04;
+  camera.lookAt(0, 0, 0);
+
+  composer.render(dt);
   requestAnimationFrame(tick);
 }
 tick();

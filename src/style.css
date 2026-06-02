@@ -5,13 +5,13 @@
    ============================================================= */
 
 :root {
-  --bg:        #08090B;
-  --ink:       #ECECEE;
-  --ink-dim:   #9AA0AA;
-  --ink-faint: #565C66;
-  --line:      rgba(255,255,255,0.10);
-  --accent:    #6FE7CE;
-  --accent-dim:#3F8E80;
+  --bg:        #F4F1EA;
+  --ink:       #0A0A0A;
+  --ink-dim:   #4B4843;
+  --ink-faint: #A09A8C;
+  --line:      rgba(10,10,10,0.14);
+  --accent:    #0A0A0A;
+  --accent-dim:#7C766A;
   --display: 'Fraunces', Georgia, serif;
   --mono:    'JetBrains Mono', ui-monospace, Consolas, monospace;
   font: 16px/1.6 var(--mono);
@@ -21,18 +21,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
-  background: radial-gradient(120% 80% at 50% 0%, #12161D 0%, var(--bg) 55%, #050608 100%);
+  background: var(--bg);
   overflow-x: hidden;
 }
-::selection { background: var(--accent); color: #06120E; }
+::selection { background: var(--accent); color: var(--bg); }
 
-/* Cinematic depth: a vignette over the scene + a faint film grain. */
+/* Cinematic depth: a soft cream vignette + a faint film grain.
+   (The WebGL canvas paints its own vignette too; this catches the chrome.) */
 html::before {
   content: ''; position: fixed; inset: 0; z-index: 2; pointer-events: none;
-  background: radial-gradient(125% 95% at 50% 42%, transparent 52%, rgba(4,5,7,0.62) 100%);
+  background: radial-gradient(125% 95% at 50% 42%, transparent 60%, rgba(120,110,92,0.16) 100%);
 }
 html::after {
-  content: ''; position: fixed; inset: 0; z-index: 18; pointer-events: none; opacity: 0.05;
+  content: ''; position: fixed; inset: 0; z-index: 18; pointer-events: none; opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -40,7 +41,7 @@ html::after {
    chrome (brand / status / cue) instead of colliding with it. */
 body::before {
   content: ''; position: fixed; top: 0; left: 0; right: 0; height: 175px; z-index: 15;
-  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 32%, rgba(8,9,11,0.85) 56%, transparent 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 32%, rgba(244,241,234,0.85) 56%, transparent 100%);
   pointer-events: none;
 }
 body::after {
@@ -49,11 +50,14 @@ body::after {
   pointer-events: none;
 }
 
-/* ---------- 3D ball (fixed centerpiece) ---------- */
+/* ---------- 3D canvas (the astronaut's cream space) ---------- */
 #ball {
   position: fixed; inset: 0; width: 100vw; height: 100vh;
-  z-index: 1; display: block; touch-action: pan-y; pointer-events: none;
+  z-index: 1; display: block; touch-action: pan-y; pointer-events: auto;
+  cursor: default;
 }
+#ball.grab { cursor: grab; }
+#ball.grabbing { cursor: grabbing; }
 
 /* ---------- Boot (the katti·os cold-start) ---------- */
 .boot {
@@ -151,12 +155,16 @@ body::after {
   box-shadow: 0 0 16px var(--accent), 0 0 5px rgba(255,255,255,0.9); opacity: 0;
 }
 .packet--throw {
-  width: 6px; height: 6px; background: #c4f7ec;
+  width: 6px; height: 6px; background: #e8e8ea;
   box-shadow: 0 0 11px var(--accent);
 }
 
 /* ---------- Panels (scroll sections) ---------- */
-main { position: relative; z-index: 5; }
+/* Panels let pointer events pass THROUGH to the canvas (so you can grab the
+   astronaut in open space); only the actual content blocks intercept. */
+main { position: relative; z-index: 5; pointer-events: none; }
+.panel { pointer-events: none; }
+.content, .hero-id, .duo, .row, .link-btn, .contact-links a, .rows { pointer-events: auto; }
 .panel {
   min-height: 100vh; display: flex; align-items: center;
   padding: 12vh 7vw; position: relative;
@@ -195,7 +203,7 @@ h2 {
 .hero-name {
   font-family: var(--display); font-weight: 400;
   font-size: clamp(64px, 12vw, 168px); line-height: 0.84; letter-spacing: -0.04em;
-  color: var(--ink); text-shadow: 0 10px 70px rgba(0,0,0,0.6);
+  color: var(--ink); text-shadow: 0 6px 40px rgba(40,34,22,0.12);
   font-variation-settings: 'opsz' 144, 'wght' 360, 'SOFT' 20, 'WONK' 1;
 }
 .hero-sub { margin-top: 26px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); }
@@ -208,7 +216,7 @@ h2 {
   transition: padding-left 0.3s ease, background 0.3s ease;
 }
 .row:last-child { border-bottom: 1px solid var(--line); }
-.row:hover { padding-left: 14px; background: rgba(255,255,255,0.02); }
+.row:hover { padding-left: 14px; background: rgba(10,10,10,0.035); }
 .row-date, .row-idx { font-size: 10.5px; letter-spacing: 0.16em; color: var(--ink-faint); min-width: 58px; text-transform: uppercase; }
 .row-name { font-family: var(--display); font-size: clamp(20px, 2.4vw, 30px); color: var(--ink); margin-right: auto; letter-spacing: -0.02em; transition: color 0.3s; }
 .row:hover .row-name { color: var(--accent); }
@@ -221,7 +229,7 @@ h2 {
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
   transition: color 0.25s, border-color 0.25s, background 0.25s;
 }
-.link-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(255,255,255,0.03); }
+.link-btn:hover { color: var(--bg); border-color: var(--accent); background: var(--accent); }
 
 .contact-links { display: flex; flex-direction: column; gap: 2px; margin-top: 18px; align-items: center; }
 .contact-links a {
@@ -229,29 +237,31 @@ h2 {
   text-decoration: none; padding: 12px 0; transition: color 0.25s; letter-spacing: -0.01em;
 }
 .contact-links a:hover { color: var(--accent); }
+.credit { margin-top: 30px; font-size: 10.5px; letter-spacing: 0.08em; color: var(--ink-faint); }
+.credit a { color: var(--ink-dim); text-decoration: none; border-bottom: 1px solid var(--line); }
+.credit a:hover { color: var(--accent); }
 
 /* ---------- Window (dossier) ---------- */
 .window { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
 .window.is-open { opacity: 1; pointer-events: auto; }
 .window-scrim { position: absolute; inset: 0; background: rgba(4,5,7,0.66); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.window-panel { position: relative; width: min(820px,92vw); max-height: 86vh; display: flex; flex-direction: column; background: linear-gradient(180deg,#0F1217,#0B0D11); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 40px 120px rgba(0,0,0,0.6); transform: translateY(20px) scale(0.985); transition: transform 0.4s cubic-bezier(0.2,0.8,0.2,1); }
-.window.is-open .window-panel { transform: translateY(0) scale(1); }
+.window-panel { position: relative; width: min(820px,92vw); max-height: 86vh; display: flex; flex-direction: column; background: linear-gradient(180deg,#FBFAF5,#F1EDE3); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 40px 120px rgba(40,34,22,0.28); will-change: transform, opacity; }
 .window-bar { display: flex; align-items: center; gap: 16px; padding: 16px 22px; border-bottom: 1px solid var(--line); }
 .window-id { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
 .window-title { font-family: var(--display); font-size: 17px; color: var(--ink); margin-right: auto; }
 .window-close { background: transparent; border: 1px solid var(--line); color: var(--ink-dim); border-radius: 8px; padding: 7px 13px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: 0.25s; }
 .window-close:hover { color: var(--ink); border-color: var(--accent); }
-.window-body { padding: 30px 40px 40px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent; }
+.window-body { padding: 30px 40px 40px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(10,10,10,0.25) transparent; }
 .window-body::-webkit-scrollbar { width: 6px; }
-.window-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+.window-body::-webkit-scrollbar-thumb { background: rgba(10,10,10,0.2); border-radius: 3px; }
 .win-doc .doc-tag { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 24px; display: block; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .win-doc h4 { font-size: 10.5px; font-family: var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent-dim); margin: 28px 0 12px; font-weight: 600; }
 .win-doc p { color: var(--ink-dim); font-size: 14.5px; line-height: 1.72; margin-bottom: 14px; }
 .win-doc ul, .win-doc ol { color: var(--ink-dim); margin: 0 0 16px; padding-left: 22px; font-size: 14px; line-height: 1.7; }
 .win-doc li { margin-bottom: 6px; } .win-doc li::marker { color: var(--accent-dim); }
 .win-doc strong { color: var(--ink); font-weight: 600; } .win-doc em { color: var(--accent); font-style: italic; }
-.win-doc code { font-family: var(--mono); font-size: 12.5px; background: rgba(255,255,255,0.05); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
-.win-doc pre { background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin-bottom: 16px; }
+.win-doc code { font-family: var(--mono); font-size: 12.5px; background: rgba(10,10,10,0.06); color: var(--ink); padding: 2px 6px; border-radius: 4px; }
+.win-doc pre { background: rgba(10,10,10,0.05); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin-bottom: 16px; }
 .win-doc pre code { background: transparent; color: var(--ink-dim); padding: 0; }
 .win-doc a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-dim); }
 
