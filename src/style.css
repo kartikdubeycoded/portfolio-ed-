@@ -54,10 +54,26 @@ body::after {
 #ball {
   position: fixed; inset: 0; width: 100vw; height: 100vh;
   z-index: 1; display: block; touch-action: pan-y; pointer-events: auto;
-  cursor: default;
+  cursor: none !important;
 }
-#ball.grab { cursor: grab; }
-#ball.grabbing { cursor: grabbing; }
+#ball.grab { cursor: none !important; }
+#ball.grabbing { cursor: none !important; }
+
+/* Custom cursor canvas overlay */
+#cursor-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  pointer-events: none;
+  display: block;
+}
+
+/* Hide default cursor on body and all interactive elements */
+body, a, button, [data-doc], [data-close], .row, .link-btn, .contact-links a {
+  cursor: none !important;
+}
 
 /* ---------- Boot (the katti·os cold-start) ---------- */
 .boot {
@@ -197,6 +213,10 @@ h2 {
   font-variation-settings: 'opsz' 96, 'wght' 400, 'SOFT' 30, 'WONK' 1;
 }
 .body { font-size: 15px; line-height: 1.72; color: var(--ink-dim); margin-bottom: 16px; max-width: 44ch; }
+
+/* break-and-rejoin: outer span keeps layout, inner span takes the physics transform */
+.smash-w { display: inline-block; }
+.smash-i { display: inline-block; will-change: transform; }
 
 /* hero identity */
 .hero-id { position: relative; z-index: 6; }

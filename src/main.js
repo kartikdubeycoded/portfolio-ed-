@@ -1,8 +1,14 @@
 import './style.css';
+import './smash.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { initCursor, getCursorTailTarget, setAstronautHand } from './cursor.js';
+
+// Initialize custom wavy canvas cursor trail
+initCursor();
 import {
   EffectComposer, RenderPass, EffectPass,
   BloomEffect, VignetteEffect, NoiseEffect, SMAAEffect, SMAAPreset, BlendFunction,
@@ -108,8 +114,8 @@ gsap.to(bootProg, {
 // THE WORLD — a cream void with one floating astronaut.
 // ===========================================================
 const canvas = document.getElementById('ball');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -171,6 +177,16 @@ gltf.load('/astronaut.glb', (g) => {
   const b2 = new THREE.Box3().setFromObject(astronaut);
   const c2 = new THREE.Vector3(); b2.getCenter(c2);
   astronaut.position.x -= c2.x; astronaut.position.y -= c2.y; astronaut.position.z -= c2.z;
+
+  // Store bone references for bone-wiggling fluid motion
+  const bones = {};
+  astronaut.traverse((o) => {
+    if (o.isBone) {
+      bones[o.name] = o;
+    }
+  });
+  astronaut.userData.bones = bones;
+
   ready = true;
 
   // entrance: scale-pop as the boot dissolves
@@ -181,11 +197,10 @@ gltf.load('/astronaut.glb', (g) => {
 // ---- post-processing: filmic finish (pmndrs) ----
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new BloomEffect({ intensity: 0.5, luminanceThreshold: 0.9, luminanceSmoothing: 0.3, mipmapBlur: true });
-const vignette = new VignetteEffect({ offset: 0.32, darkness: 0.46 });
-const grain = new NoiseEffect({ blendFunction: BlendFunction.OVERLAY }); grain.blendMode.opacity.value = 0.045;
-const smaa = new SMAAEffect({ preset: SMAAPreset.HIGH });
-composer.addPass(new EffectPass(camera, smaa, bloom, vignette, grain));
+const bloom = new BloomEffect({ intensity: 0.45, luminanceThreshold: 0.9, luminanceSmoothing: 0.3, mipmapBlur: true });
+const vignette = new VignetteEffect({ offset: 0.32, darkness: 0.42 });
+// SMAA + film-grain dropped for performance — renderer MSAA handles anti-aliasing now.
+composer.addPass(new EffectPass(camera, bloom, vignette));
 
 function size() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -198,9 +213,15 @@ size(); addEventListener('resize', size);
 const st = { p: 0 };
 ScrollTrigger.create({ trigger: 'main', start: 'top top', end: 'bottom bottom', scrub: 1, onUpdate: (self) => { st.p = self.progress; } });
 
-// pointer parallax (camera breathes with the mouse)
-const mouse = { x: 0, y: 0 };
-addEventListener('pointermove', (e) => { mouse.x = e.clientX / innerWidth - 0.5; mouse.y = -(e.clientY / innerHeight - 0.5); });
+// pointer tracking — normalized position + raw px speed (for the jiggle)
+const mouse = { x: 0, y: 0, px: window.innerWidth / 2, py: window.innerHeight / 2, speed: 0, lastT: performance.now() };
+addEventListener('pointermove', (e) => {
+  mouse.x = e.clientX / innerWidth - 0.5;
+  mouse.y = -(e.clientY / innerHeight - 0.5);
+  const now = performance.now(), dtm = now - mouse.lastT;
+  if (dtm > 0) { const dx = e.clientX - mouse.px, dy = e.clientY - mouse.py; mouse.speed = Math.hypot(dx, dy) / dtm; }
+  mouse.px = e.clientX; mouse.py = e.clientY; mouse.lastT = now;
+});
 
 // content reveals
 gsap.utils.toArray('.panel').forEach((panel) => {
@@ -252,6 +273,7 @@ addEventListener('pointerup', () => {
 
 // ---------- Render ----------
 const clock = new THREE.Clock();
+const handWorld = new THREE.Vector3();
 let elapsed = 0;
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -261,29 +283,81 @@ function tick() {
   // when the wave finishes, fall back to floating
   if (current && current.getClip && current.getClip().name === 'wave' && !current.isRunning()) play('floating');
 
-  // ---- the astronaut FLOATS — a continuous wavy zero-g drift; the cursor nudges it ----
-  if (!dragging) {
-    const wx = Math.sin(t * 0.5) * 1.2 + Math.cos(t * 0.33) * 0.6;   // figure-8 wander
-    const wy = Math.sin(t * 0.43) * 0.6 + Math.cos(t * 0.27) * 0.3;
-    const baseX = Math.sin(st.p * Math.PI * 2.0) * 0.5;
-    const baseY = 0.4 + Math.cos(st.p * Math.PI * 1.3) * 0.25;
-    const tx = baseX + wx + mouse.x * 2.8;   // cursor nudges where he wanders
-    const ty = baseY + wy + mouse.y * 1.6;
-    drift.position.x += (tx - drift.position.x) * 0.05;
-    drift.position.y += (ty - drift.position.y) * 0.05;
-    // wavy roll/lean — banks into the drift and toward the cursor
-    drift.rotation.z += ((-mouse.x * 0.22 + Math.sin(t * 0.4) * 0.14) - drift.rotation.z) * 0.05;
-    drift.rotation.x += (( mouse.y * 0.16 + Math.cos(t * 0.5) * 0.09) - drift.rotation.x) * 0.05;
-  }
+  // jiggle intensity — spikes when the cursor jitters fast, decays smoothly
+  mouse.speed *= 0.9;
+  const shake = Math.min(mouse.speed * 0.5, 2.4);
 
-  // continuous slow 360 turn (always alive) + coast from your flicks
-  if (!dragging) {
-    spin.y += velY; velY *= 0.94;
-    spin.x += velX; velX *= 0.94;
-    spin.y += 0.0045;   // perpetual full-circle turn
+  if (dragging) {
+    // reset velocity on drag
+    drift.userData.vx = 0;
+    drift.userData.vy = 0;
+    // you're spinning him — your input owns the rotation
+    pivot.rotation.y += (spin.y - pivot.rotation.y) * 0.45;
+    pivot.rotation.x += (spin.x - pivot.rotation.x) * 0.45;
+  } else {
+    // ---- He's TOWED by the cursor's string, like a balloon a kid walks with ----
+    const tempV = new THREE.Vector3();
+    drift.getWorldPosition(tempV);
+    tempV.project(camera);
+    const astroScreenX = (tempV.x * 0.5 + 0.5) * window.innerWidth;
+    const astroScreenY = (-(tempV.y * 0.5) + 0.5) * window.innerHeight;
+
+    // keep a calm string-length of slack behind the cursor (the tether)
+    const dx = astroScreenX - mouse.px;
+    const dy = astroScreenY - mouse.py;
+    const dist = Math.hypot(dx, dy) || 0.1;
+    const stringLen = 150;                       // ~4cm of string
+    const targetX = mouse.px + (dx / dist) * stringLen;
+    const targetY = mouse.py + (dy / dist) * stringLen;
+    const tx = (targetX / window.innerWidth - 0.5) * 5.0;
+    const ty = 0.15 + (-(targetY / window.innerHeight - 0.5)) * 3.0;
+
+    if (drift.userData.vx === undefined) { drift.userData.vx = 0; drift.userData.vy = 0; }
+    // Guard: first-frame projection is NaN before the camera matrix exists; skipping
+    // keeps that NaN from poisoning his position forever (which made him vanish).
+    if (Number.isFinite(tx) && Number.isFinite(ty)) {
+      const stiffness = 0.06, damping = 0.17;    // active but smooth tow
+      drift.userData.vx += (tx - drift.position.x) * stiffness - drift.userData.vx * damping;
+      drift.userData.vy += (ty - drift.position.y) * stiffness - drift.userData.vy * damping;
+      drift.position.x += drift.userData.vx;
+      drift.position.y += drift.userData.vy;
+    }
+
+    // HEAD-FIRST: his head points where he's swimming — turns the SHORT way, slowly,
+    // like a swimmer aiming forward. No torso spin, no helicopter.
+    const sp = Math.hypot(drift.userData.vx, drift.userData.vy);
+    if (sp > 0.0015) {
+      const desired = Math.atan2(drift.userData.vy, drift.userData.vx) - Math.PI / 2;
+      const d = Math.atan2(Math.sin(desired - pivot.rotation.z), Math.cos(desired - pivot.rotation.z));
+      pivot.rotation.z += d * 0.06;
+    }
+    pivot.rotation.x += (0.4 - pivot.rotation.x) * 0.04;   // gentle dive into the page
+    pivot.rotation.y += (0 - pivot.rotation.y) * 0.04;
+
+    // soft breathing only (subtle life) — no hard jelly
+    if (elapsed > 2.2) { const sq = Math.sin(t * 2.0) * 0.02; pivot.scale.set(1 + sq, 1 - sq, 1); }
+
+    // ---- SWIM: every limb strokes like swimming through the page ----
+    // Smooth, slow, organic. Additive on top of the baked float; scales with speed.
+    if (ready && astronaut && astronaut.userData.bones) {
+      const B = astronaut.userData.bones;
+      const speed = Math.hypot(drift.userData.vx, drift.userData.vy);
+      const drive = 0.65 + Math.min(speed * 26.0, 0.9);   // swim harder while moving
+      const w = t * 2.6;                                   // stroke tempo (slow = graceful)
+      const add = (name, ax, v) => { const bn = B[name]; if (bn) bn.rotation[ax] += v; };
+
+      // legs: alternating flutter kick (thighs opposite phase, knees trailing)
+      add('L_Thigh82', 'x', Math.sin(w) * 0.24 * drive);
+      add('R_Thigh88', 'x', Math.sin(w + Math.PI) * 0.24 * drive);
+      add('L_Knee83', 'x', Math.sin(w - 0.7) * 0.18 * drive);
+      add('R_Knee89', 'x', Math.sin(w + Math.PI - 0.7) * 0.18 * drive);
+
+      // arms: left pulls a stroke; right just gently flexes (it's holding the string)
+      add('L_Arm10', 'x', Math.sin(w * 0.5) * 0.3 * drive);
+      add('L_Elbow11', 'x', Math.sin(w * 0.5 - 0.8) * 0.22 * drive);
+      add('R_Arm44', 'x', Math.sin(w * 0.5 + Math.PI) * 0.1 * drive);
+    }
   }
-  pivot.rotation.y += (spin.y - pivot.rotation.y) * (dragging ? 0.45 : 0.14);
-  pivot.rotation.x += (spin.x - pivot.rotation.x) * (dragging ? 0.45 : 0.14);
 
   // camera breathes very slightly opposite (depth) — the astronaut does the moving now
   camera.position.x += (-mouse.x * 0.5 - camera.position.x) * 0.04;
@@ -291,6 +365,19 @@ function tick() {
   camera.lookAt(0, 0, 0);
 
   composer.render(dt);
+
+  // feed his right hand's screen position to the cursor → the string ends in his grip
+  if (ready && astronaut && astronaut.userData.bones) {
+    const hand = astronaut.userData.bones['R_Wrist46'];
+    if (hand) {
+      hand.getWorldPosition(handWorld);
+      handWorld.project(camera);
+      const hx = (handWorld.x * 0.5 + 0.5) * innerWidth;
+      const hy = (-(handWorld.y * 0.5) + 0.5) * innerHeight;
+      if (Number.isFinite(hx) && Number.isFinite(hy)) setAstronautHand(hx, hy);
+    }
+  }
+
   requestAnimationFrame(tick);
 }
 tick();
