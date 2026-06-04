@@ -119,7 +119,7 @@ gsap.to(bootProg, {
 // ===========================================================
 const canvas = document.getElementById('ball');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, LITE ? 1.5 : 2));  // mobile: fewer pixels = smoother
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, LITE ? 1.25 : 2));  // mobile: fewer pixels = smoother
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -158,7 +158,7 @@ const planetSpecs = [
 
 const texLoader = new THREE.TextureLoader();
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
-const loadTex = (f) => { const t = texLoader.load(f); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso; return t; };
+const loadTex = (f) => { const t = texLoader.load(f); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = LITE ? 2 : maxAniso; return t; };  // mobile: cheap texture sampling = no stutter on moving planets
 
 // lat/lon → a point on a sphere of the given radius (three.js default UV convention)
 function latLonToVec3(lat, lon, radius) {
@@ -195,13 +195,16 @@ const planets = planetSpecs.map((s) => {
   if (s.earth) {
     spinner.rotation.y = EARTH_ROT;             // India to the front
 
-    // drifting cloud shell
-    const cloudTex = loadTex('/textures/earth_clouds.jpg');
-    clouds = new THREE.Mesh(
-      new THREE.SphereGeometry(s.r * 1.012, 96, 64),
-      new THREE.MeshStandardMaterial({ map: cloudTex, alphaMap: cloudTex, transparent: true, depthWrite: false, opacity: 0.9, roughness: 1 }),
-    );
-    spinner.add(clouds);
+    // drifting cloud shell — skip on mobile (a 2nd transparent sphere over the biggest
+    // planet = overdraw, which phones choke on; not worth the stutter on a small screen)
+    if (!LITE) {
+      const cloudTex = loadTex('/textures/earth_clouds.jpg');
+      clouds = new THREE.Mesh(
+        new THREE.SphereGeometry(s.r * 1.012, 96, 64),
+        new THREE.MeshStandardMaterial({ map: cloudTex, alphaMap: cloudTex, transparent: true, depthWrite: false, opacity: 0.9, roughness: 1 }),
+      );
+      spinner.add(clouds);
+    }
 
     // soft blue atmosphere halo (back-side additive rim)
     const atmo = new THREE.Mesh(
