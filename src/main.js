@@ -7,8 +7,12 @@ import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.j
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { initCursor } from './cursor.js';
 
-// Initialize custom wavy canvas cursor trail
-initCursor();
+// Touch / small / low-power devices: skip the desktop-only mouse FX and heavy post-processing.
+// (the cursor trail, bloom, and high pixel-ratio do nothing useful on a phone but kill its FPS)
+const LITE = matchMedia('(max-width: 820px), (pointer: coarse)').matches;
+
+// Wavy canvas cursor trail is a desktop flourish — there's no cursor to trail on touch.
+if (!LITE) initCursor();
 import {
   EffectComposer, RenderPass, EffectPass,
   BloomEffect, VignetteEffect, NoiseEffect, SMAAEffect, SMAAPreset, BlendFunction,
@@ -115,7 +119,7 @@ gsap.to(bootProg, {
 // ===========================================================
 const canvas = document.getElementById('ball');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));  // crisp / retina-4K
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, LITE ? 1.5 : 2));  // mobile: fewer pixels = smoother
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -561,7 +565,8 @@ function tick() {
   camera.position.y += (mouse.y * 0.32 - camera.position.y) * 0.04;
   camera.lookAt(0, 0, 0);
 
-  composer.render(dt);
+  if (LITE) renderer.render(scene, camera);  // mobile: skip full-screen bloom (the biggest GPU cost)
+  else composer.render(dt);
 
   // (Astronaut no longer holds the cursor string — the trail runs free of him.)
 
