@@ -13,8 +13,9 @@
   --accent:    #0A0A0A;
   --accent-dim:#7C766A;
   --display: 'Fraunces', Georgia, serif;
+  --sans:    'Hanken Grotesk', system-ui, sans-serif;
   --mono:    'JetBrains Mono', ui-monospace, Consolas, monospace;
-  font: 16px/1.6 var(--mono);
+  font: 16px/1.6 var(--sans);
   color: var(--ink);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
@@ -153,7 +154,7 @@ body, a, button, [data-doc], [data-close], .row, .link-btn, .contact-links a {
 /* ---------- Dock: key links reachable from screen one (Luke-style placement) ---------- */
 .dock { position: fixed; bottom: 28px; left: 30px; z-index: 20; display: flex; gap: 22px; }
 .dock a {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  font-family: var(--sans); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--ink-dim); text-decoration: none; position: relative; transition: color 0.25s;
 }
 .dock a::after {
@@ -163,12 +164,32 @@ body, a, button, [data-doc], [data-close], .row, .link-btn, .contact-links a {
 .dock a:hover { color: var(--accent); }
 .dock a:hover::after { width: 100%; }
 
+/* ---------- Mumbai ping (galactic beacon on the globe) ---------- */
+.ping {
+  position: fixed; top: 0; left: 0; z-index: 16; pointer-events: none;
+  width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%;
+  opacity: 0; transition: opacity 0.4s ease;
+}
+.ping.on { opacity: 1; }
+/* the glowing core */
+.ping::before {
+  content: ''; position: absolute; inset: 1.5px; border-radius: 50%;
+  background: radial-gradient(circle, #eafff9 0%, #6FE7CE 60%, rgba(111,231,206,0) 100%);
+  box-shadow: 0 0 10px 2px rgba(111,231,206,0.9);
+}
+/* the expanding radar pulse */
+.ping::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid #6FE7CE; animation: pingPulse 1.8s ease-out infinite;
+}
+@keyframes pingPulse { 0% { transform: scale(0.6); opacity: 0.85; } 100% { transform: scale(4.2); opacity: 0; } }
+
 /* ---------- Packets (ball → katti) ---------- */
 .packets { position: fixed; inset: 0; z-index: 19; pointer-events: none; }
 .packet {
-  position: fixed; top: 0; left: 0; width: 9px; height: 9px; border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 16px var(--accent), 0 0 5px rgba(255,255,255,0.9); opacity: 0;
+  position: fixed; top: 0; left: 0; width: 6px; height: 6px; border-radius: 50%;
+  background: #6FE7CE;
+  box-shadow: 0 0 12px 2px rgba(111,231,206,0.9), 0 0 4px #eafff9; opacity: 0;
 }
 .packet--throw {
   width: 6px; height: 6px; background: #e8e8ea;
@@ -183,7 +204,7 @@ main { position: relative; z-index: 5; pointer-events: none; }
 .content, .hero-id, .duo, .row, .link-btn, .contact-links a, .rows { pointer-events: auto; }
 .panel {
   min-height: 100vh; display: flex; align-items: center;
-  padding: 12vh 7vw; position: relative;
+  padding: 10vh 7vw; position: relative;
 }
 .panel--hero  { justify-content: center; text-align: center; }
 .panel--right { justify-content: flex-end; }
@@ -201,7 +222,7 @@ main { position: relative; z-index: 5; pointer-events: none; }
 .panel--duo .content { max-width: 420px; }
 
 /* Compact panels — tighter, shorter, less vertical scroll */
-.panel--compact { min-height: 76vh; padding-top: 9vh; padding-bottom: 9vh; }
+.panel--compact { min-height: 66vh; padding-top: 7vh; padding-bottom: 7vh; }
 
 .eyebrow { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); margin-bottom: 22px; display:flex; gap:10px; align-items:center; justify-content: inherit; }
 .panel--hero .eyebrow, .content--center .eyebrow { justify-content: center; }
@@ -213,6 +234,30 @@ h2 {
   font-variation-settings: 'opsz' 96, 'wght' 400, 'SOFT' 30, 'WONK' 1;
 }
 .body { font-size: 15px; line-height: 1.72; color: var(--ink-dim); margin-bottom: 16px; max-width: 44ch; }
+
+/* Marker highlight — jet box behind heading text, cream text on top. box-decoration-break
+   keeps each wrapped line its own clean block (the look from the reference image). */
+.h-mark {
+  background: var(--ink); color: var(--bg);
+  padding: 0.06em 0.2em 0.12em; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  line-height: 1.32; /* room so stacked highlighted lines don't touch */
+}
+
+/* Treatment #2 — hollow/outline display type (letters drawn, not filled) */
+.h-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--ink);
+  text-stroke: 1.5px var(--ink);
+}
+
+/* Treatment #3 — accent word with a drawn underline bar that grows on view */
+.h-ul { position: relative; white-space: nowrap; }
+.h-ul::after {
+  content: ''; position: absolute; left: 0; bottom: 0.04em; height: 0.12em; width: 100%;
+  background: var(--ink); transform: scaleX(0); transform-origin: left;
+  animation: hUl 0.7s 0.3s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+}
+@keyframes hUl { to { transform: scaleX(1); } }
 
 /* break-and-rejoin: outer span keeps layout, inner span takes the physics transform */
 .smash-w { display: inline-block; }
@@ -246,7 +291,7 @@ h2 {
 .link-btn {
   margin-top: 22px; background: transparent; border: 1px solid var(--line);
   color: var(--ink); border-radius: 9px; padding: 11px 18px; cursor: pointer;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  font-family: var(--sans); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
   transition: color 0.25s, border-color 0.25s, background 0.25s;
 }
 .link-btn:hover { color: var(--bg); border-color: var(--accent); background: var(--accent); }
@@ -261,6 +306,68 @@ h2 {
 .credit a { color: var(--ink-dim); text-decoration: none; border-bottom: 1px solid var(--line); }
 .credit a:hover { color: var(--accent); }
 
+/* ---------- Section rail (right edge: where you are in the system) ---------- */
+.rail {
+  position: fixed; top: 50%; right: 26px; transform: translateY(-50%); z-index: 20;
+  display: flex; flex-direction: column; gap: 4px; pointer-events: auto;
+}
+.rail-item {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  text-decoration: none; padding: 7px 0; opacity: 0.4;
+  transition: opacity 0.35s ease;
+}
+.rail-item .rail-n {
+  font-family: var(--sans); font-size: 10px; letter-spacing: 0.12em; color: var(--ink-dim);
+  min-width: 20px; text-align: right;
+}
+.rail-item .rail-l {
+  font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-dim); max-width: 0; overflow: hidden; white-space: nowrap;
+  opacity: 0; transition: max-width 0.4s ease, opacity 0.3s ease;
+}
+.rail-item::after {
+  content: ''; width: 14px; height: 1px; background: var(--ink-dim); flex: none;
+  transition: width 0.35s ease, background 0.35s ease;
+}
+.rail-item:hover, .rail-item.is-active { opacity: 1; }
+.rail-item:hover .rail-l, .rail-item.is-active .rail-l { max-width: 90px; opacity: 1; }
+.rail-item.is-active::after { width: 30px; background: var(--accent); }
+.rail-item.is-active .rail-n { color: var(--accent); }
+
+/* ---------- Giant section numerals (editorial density) ---------- */
+.panel-num {
+  position: absolute; z-index: 4; pointer-events: none;
+  font-family: var(--display); font-weight: 400;
+  font-size: clamp(180px, 30vw, 440px); line-height: 0.8;
+  color: transparent; -webkit-text-stroke: 1px rgba(10,10,10,0.11);
+  letter-spacing: -0.04em; top: 50%; right: 4vw; transform: translateY(-50%);
+  font-variation-settings: 'opsz' 144, 'wght' 300, 'WONK' 1;
+  user-select: none;
+}
+.panel-num--left { right: auto; left: 4vw; }
+.panel-num--center { left: 50%; right: auto; transform: translate(-50%, -50%); }
+
+/* ---------- Meta detail (tags + stats under headings) ---------- */
+.meta-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.meta-tags li {
+  font-family: var(--sans); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); border: 1px solid var(--line); border-radius: 100px; padding: 6px 12px;
+}
+.meta-stat { list-style: none; display: flex; gap: 28px; margin-top: 24px; }
+.meta-stat li { display: flex; flex-direction: column; gap: 3px; }
+.meta-stat b {
+  font-family: var(--display); font-weight: 400; font-size: clamp(18px, 2vw, 26px);
+  color: var(--ink); letter-spacing: -0.02em; line-height: 1;
+}
+.meta-stat span { font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
+
+.content--wide { max-width: 600px; }
+.row-tag {
+  font-family: var(--sans); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-faint); margin-left: 18px; white-space: nowrap;
+}
+@media (max-width: 980px) { .row-tag { display: none; } }
+
 /* ---------- Window (dossier) ---------- */
 .window { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
 .window.is-open { opacity: 1; pointer-events: auto; }
@@ -269,13 +376,13 @@ h2 {
 .window-bar { display: flex; align-items: center; gap: 16px; padding: 16px 22px; border-bottom: 1px solid var(--line); }
 .window-id { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
 .window-title { font-family: var(--display); font-size: 17px; color: var(--ink); margin-right: auto; }
-.window-close { background: transparent; border: 1px solid var(--line); color: var(--ink-dim); border-radius: 8px; padding: 7px 13px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: 0.25s; }
+.window-close { background: transparent; border: 1px solid var(--line); color: var(--ink-dim); border-radius: 8px; padding: 7px 13px; font-family: var(--sans); font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: 0.25s; }
 .window-close:hover { color: var(--ink); border-color: var(--accent); }
 .window-body { padding: 30px 40px 40px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(10,10,10,0.25) transparent; }
 .window-body::-webkit-scrollbar { width: 6px; }
 .window-body::-webkit-scrollbar-thumb { background: rgba(10,10,10,0.2); border-radius: 3px; }
 .win-doc .doc-tag { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 24px; display: block; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
-.win-doc h4 { font-size: 10.5px; font-family: var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent-dim); margin: 28px 0 12px; font-weight: 600; }
+.win-doc h4 { font-size: 10.5px; font-family: var(--sans); letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent-dim); margin: 28px 0 12px; font-weight: 600; }
 .win-doc p { color: var(--ink-dim); font-size: 14.5px; line-height: 1.72; margin-bottom: 14px; }
 .win-doc ul, .win-doc ol { color: var(--ink-dim); margin: 0 0 16px; padding-left: 22px; font-size: 14px; line-height: 1.7; }
 .win-doc li { margin-bottom: 6px; } .win-doc li::marker { color: var(--accent-dim); }
@@ -299,6 +406,10 @@ h2 {
   .panel--duo .content { max-width: 100%; }
   .panel--compact { min-height: auto; }
   .dock { display: none; }   /* contact section covers this on mobile */
+  .rail { display: none; }   /* too small to be useful on phones */
+  .panel-num { font-size: 34vw; opacity: 0.8; }
+  .meta-tags, .meta-stat { justify-content: center; }
+  .meta-stat { gap: 20px; flex-wrap: wrap; }
   .boot-log { min-width: 0; font-size: 10px; }
   #ball { opacity: 0.5; }   /* sits behind, content stays readable */
   .window-body { padding: 22px 20px 30px; }

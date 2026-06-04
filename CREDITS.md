@@ -7,6 +7,12 @@
   The model in `public/astronaut.glb` is a compressed (Draco geometry + WebP textures,
   via @gltf-transform) derivative of that work; no changes to the mesh, rig, or animations.
 
+## Planet textures
+- **Solar System Scope** textures (Earth, Mars, Jupiter, Saturn + ring, Neptune)
+  — licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+  Source: https://www.solarsystemscope.com/textures/
+  Stored in `public/textures/`. Used as planet surface maps in the background solar system.
+
 ## Libraries
 - [three.js](https://threejs.org/) · [postprocessing (pmndrs)](https://github.com/pmndrs/postprocessing)
   · [GSAP + ScrollTrigger](https://gsap.com/) · [Lenis](https://github.com/darkroomengineering/lenis)

@@ -25,7 +25,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   </head>
   <body>
     <div class="boot" id="boot">
@@ -43,6 +43,7 @@
 
     <canvas id="ball"></canvas>
     <div class="packets" id="packets" aria-hidden="true"></div>
+    <div class="ping" id="ping" aria-hidden="true"></div>
 
     <a class="brand" id="brand" href="#top">Kartik<span class="brand-port" id="brand-port"></span></a>
     <div class="status"><span class="status-dot"></span><span>katti·os online</span></div>
@@ -52,6 +53,15 @@
       <a href="mailto:kartikdubey1934@gmail.com">email</a>
     </nav>
     <div class="scroll-cue" id="scroll-cue"><span>scroll</span><i></i></div>
+
+    <!-- Section rail: where you are in the system (tracks scroll, click to jump) -->
+    <nav class="rail" id="rail" aria-label="Sections">
+      <a class="rail-item" href="#top" data-rail="hero"><span class="rail-n">01</span><span class="rail-l">index</span></a>
+      <a class="rail-item" href="#sec-about" data-rail="about"><span class="rail-n">02</span><span class="rail-l">about</span></a>
+      <a class="rail-item" href="#sec-experience" data-rail="experience"><span class="rail-n">03</span><span class="rail-l">work</span></a>
+      <a class="rail-item" href="#sec-projects" data-rail="projects"><span class="rail-n">04</span><span class="rail-l">projects</span></a>
+      <a class="rail-item" href="#sec-contact" data-rail="contact"><span class="rail-n">05</span><span class="rail-l">connect</span></a>
+    </nav>
 
     <main id="top">
       <!-- HERO -->
@@ -64,51 +74,63 @@
       </section>
 
       <!-- ABOUT + KATTI (side by side, one screen) -->
-      <section class="panel panel--duo" data-step="about">
+      <section class="panel panel--duo" id="sec-about" data-step="about">
+        <span class="panel-num" aria-hidden="true">02</span>
         <div class="duo">
           <div class="content">
             <p class="eyebrow">01 — About</p>
-            <h2>I think in systems, not scripts.</h2>
+            <h2><span class="h-mark">I think in systems, not scripts.</span></h2>
             <p class="body">The first thing that forms isn't a function — it's an architecture: the agents, the memory, the data flow, where it breaks. Architect first, engineer second, closing that gap fast.</p>
+            <ul class="meta-tags">
+              <li>multi-agent</li><li>RAG</li><li>applied ML</li>
+            </ul>
           </div>
           <div class="content">
             <p class="eyebrow">02 — Who</p>
             <h2>Direct. Built to ship.</h2>
             <p class="body">Final-year B.Tech Data Science, Navi Mumbai. Three internships in, allergic to busywork that ships nothing. I'd rather hear the truth than be managed.</p>
+            <ul class="meta-stat">
+              <li><b>3</b><span>internships</span></li>
+              <li><b>B.Tech</b><span>data science</span></li>
+              <li><b>Navi&nbsp;Mumbai</b><span>based</span></li>
+            </ul>
             <button class="link-btn" data-doc="katti">more about me →</button>
           </div>
         </div>
       </section>
 
       <!-- INTERNSHIPS -->
-      <section class="panel panel--right panel--compact" data-step="experience">
-        <div class="content">
+      <section class="panel panel--right panel--compact" id="sec-experience" data-step="experience">
+        <span class="panel-num panel-num--left" aria-hidden="true">03</span>
+        <div class="content content--wide">
           <p class="eyebrow">03 — Internships</p>
-          <h2>Shipped work, three times over.</h2>
+          <h2><span class="h-mark">Work shipped.</span></h2>
           <ul class="rows">
-            <li class="row" data-doc="tcs"><span class="row-date">2025–26</span><span class="row-name">TCS · Industrial RAG</span><span class="row-go">→</span></li>
-            <li class="row" data-doc="reliance"><span class="row-date">2024–25</span><span class="row-name">Reliance · Churn Prediction</span><span class="row-go">→</span></li>
-            <li class="row" data-doc="reliance-retail"><span class="row-date">retail</span><span class="row-name">Reliance Retail · Risk &amp; Compliance</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="tcs"><span class="row-date">2025–26</span><span class="row-name">TCS · Industrial RAG</span><span class="row-tag">RAG · LLMs</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="reliance"><span class="row-date">2024–25</span><span class="row-name">Reliance · Churn Prediction</span><span class="row-tag">ML · EDA</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="reliance-retail"><span class="row-date">retail</span><span class="row-name">Reliance Retail · Risk &amp; Compliance</span><span class="row-tag">analytics</span><span class="row-go">→</span></li>
           </ul>
         </div>
       </section>
 
       <!-- PROJECTS -->
-      <section class="panel panel--left panel--compact" data-step="projects">
-        <div class="content">
+      <section class="panel panel--left panel--compact" id="sec-projects" data-step="projects">
+        <span class="panel-num" aria-hidden="true">04</span>
+        <div class="content content--wide">
           <p class="eyebrow">04 — Projects</p>
-          <h2>Four ideas worth building.</h2>
+          <h2>Projects made.</h2>
           <ul class="rows">
-            <li class="row" data-doc="katti-os"><span class="row-idx">01</span><span class="row-name">katti-os</span><span class="row-go">→</span></li>
-            <li class="row" data-doc="lexara"><span class="row-idx">02</span><span class="row-name">Lexara</span><span class="row-go">→</span></li>
-            <li class="row" data-doc="grpo"><span class="row-idx">03</span><span class="row-name">GRPO Trading</span><span class="row-go">→</span></li>
-            <li class="row" data-doc="tribe"><span class="row-idx">04</span><span class="row-name">TRIBE-Industrial</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="katti-os"><span class="row-idx">01</span><span class="row-name">katti-os</span><span class="row-tag">multi-agent OS</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="lexara"><span class="row-idx">02</span><span class="row-name">Lexara</span><span class="row-tag">legal RAG</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="grpo"><span class="row-idx">03</span><span class="row-name">GRPO Trading</span><span class="row-tag">multi-agent RL</span><span class="row-go">→</span></li>
+            <li class="row" data-doc="tribe"><span class="row-idx">04</span><span class="row-name">TRIBE-Industrial</span><span class="row-tag">foundation model</span><span class="row-go">→</span></li>
           </ul>
         </div>
       </section>
 
       <!-- CONTACT -->
-      <section class="panel panel--hero" data-step="contact">
+      <section class="panel panel--hero" id="sec-contact" data-step="contact">
+        <span class="panel-num panel-num--center" aria-hidden="true">05</span>
         <div class="content content--center">
           <p class="eyebrow">05 — Connect</p>
           <h2>Let's build something that runs.</h2>
@@ -117,7 +139,6 @@
             <a href="https://github.com/kartikdubeycoded" target="_blank" rel="noopener">github.com/kartikdubeycoded</a>
             <a href="https://www.linkedin.com/in/kartik-dubey-80b100293/" target="_blank" rel="noopener">linkedin · kartik dubey</a>
           </div>
-          <p class="credit">Astronaut model by <a href="https://sketchfab.com/3d-models/animated-floating-astronaut-in-space-suit-loop-e2c4b146e58141e4b87917456a9970b1" target="_blank" rel="noopener">LasquetiSpice</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
         </div>
       </section>
     </main>

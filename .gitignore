@@ -30,6 +30,7 @@ public/plate.png
 Gemini_Generated_Image_*.png
 IMPORTANT STRUCTURE OF THINGS.png
 Screenshot*.png
+image.png
 ref.*
 
 # Dev tooling (Playwright capture + image crop/stitch scripts)
