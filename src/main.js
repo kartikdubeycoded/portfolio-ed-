@@ -81,29 +81,41 @@ document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('cli
 win.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeWindow));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWindow(); });
 
-// ---------- Boot (the katti·os cold-start) ----------
+// ---------- Boot = the THRESHOLD. J wakes, sees a visitor, and greets you.
+// This is beat one of the story: a presence comes online and offers to guide
+// you. Status lines tick fast (the machine); J's lines land slow (the voice).
 const boot = document.getElementById('boot');
 const bootLog = document.getElementById('boot-log');
 const bootBar = boot.querySelector('.boot-bar span');
 const bootPct = document.getElementById('boot-pct');
-const bootSeq = ['booting katti·os', 'mounting memory core', 'waking agent council', 'linking data bus', 'loading kartik.dubey', 'system online'];
+const bootSeq = [
+  { t: 'system dormant', d: 480 },
+  { t: 'motion detected — a visitor', d: 620 },
+  { t: 'waking J', d: 760 },
+  { t: "hello. i'm J.", say: true, d: 1100 },
+  { t: 'kartik built me to look out for him.', say: true, d: 1300 },
+  { t: 'let me show you who he is.', say: true, last: true, d: 1200 },
+];
+const bootTotal = bootSeq.reduce((s, l) => s + l.d, 0);
 let bi = 0;
 function pushBootLine() {
   if (bi >= bootSeq.length) return;
-  const final = bi === bootSeq.length - 1;
+  const l = bootSeq[bi];
   const row = document.createElement('div');
-  row.className = 'boot-row' + (final ? ' boot-row--final' : '');
-  row.innerHTML = `<span class="bt">${bootSeq[bi]}</span><span class="bk">${final ? '●' : 'ok'}</span>`;
+  row.className = 'boot-row' + (l.say ? ' boot-row--say' : '') + (l.last ? ' boot-row--final' : '');
+  row.innerHTML = l.say
+    ? `<span class="bt">${l.t}</span>`
+    : `<span class="bt">${l.t}</span><span class="bk">ok</span>`;
   bootLog.appendChild(row);
   bi++;
-  if (bi < bootSeq.length) setTimeout(pushBootLine, 380);
+  if (bi < bootSeq.length) setTimeout(pushBootLine, l.d);
+  else setTimeout(() => boot.classList.add('is-done'), l.d + 350);   // let the last line land
 }
 pushBootLine();
 const bootProg = { v: 0 };
 gsap.to(bootProg, {
-  v: 100, duration: 2.4, ease: 'power2.inOut',
+  v: 100, duration: bootTotal / 1000, ease: 'none',
   onUpdate: () => { const p = Math.round(bootProg.v); bootBar.style.width = p + '%'; bootPct.textContent = String(p).padStart(2, '0'); },
-  onComplete: () => { setTimeout(() => boot.classList.add('is-done'), 380); },
 });
 
 // ===========================================================
@@ -270,11 +282,18 @@ function updatePulses(dt, active) {
   pulseGeo.attributes.position.needsUpdate = true;
 }
 
-// caption: names the live system + invites the interaction (the curiosity hook)
-const CAPTIONS = ['core · identity', 'memory · about', 'agents · work', 'clusters · projects', 'uplink · contact'];
+// caption = J's voice. Each section, J narrates the next beat of the story in
+// first person — turning the network from abstract decoration into "J's mind."
+const CAPTIONS = [
+  "this is kartik — and this is me, the system he built",
+  "he thinks in systems, not scripts. it's how he made me",
+  "here's what he's shipped in the real world",
+  "these are the systems he's building — including me",
+  "he's looking for the next thing to build. talk to him",
+];
 const cap = document.createElement('div');
 cap.className = 'sys-cap';
-cap.innerHTML = `<span class="sys-cap-k" id="sysCapK">core · identity</span><span class="sys-cap-h">drag to turn the system · move to perturb it</span>`;
+cap.innerHTML = `<span class="sys-cap-k" id="sysCapK">${CAPTIONS[0]}</span><span class="sys-cap-h">J is guiding you · drag to explore the system</span>`;
 document.body.appendChild(cap);
 const sysCapK = cap.querySelector('#sysCapK');
 
@@ -385,7 +404,10 @@ function tick() {
 
   if (active !== lastActive) {
     recolorEdges(active); lastActive = active;
-    if (sysCapK) sysCapK.textContent = CAPTIONS[active] || CAPTIONS[0];
+    if (sysCapK) {
+      sysCapK.textContent = CAPTIONS[active] || CAPTIONS[0];
+      gsap.fromTo(sysCapK, { opacity: 0.15, y: 4 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
+    }
   }
   updatePulses(dt, active);
 
