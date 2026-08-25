@@ -55,10 +55,14 @@ body::after {
 #ball {
   position: fixed; inset: 0; width: 100vw; height: 100vh;
   z-index: 1; display: block; touch-action: pan-y; pointer-events: auto;
-  cursor: none !important;
 }
-#ball.grab { cursor: none !important; }
-#ball.grabbing { cursor: none !important; }
+/* same rule as below: only blank the real cursor once a custom one is proven running.
+   Without the guard the whole 3D stage was a pointer-less dead zone. */
+html.has-custom-cursor #ball,
+html.has-custom-cursor #ball.grab { cursor: none !important; }
+html.has-custom-cursor #ball.grabbing { cursor: none !important; }
+#ball { cursor: grab; }
+#ball.grabbing { cursor: grabbing; }
 
 /* Custom cursor canvas overlay */
 #cursor-canvas {
@@ -71,8 +75,18 @@ body::after {
   display: block;
 }
 
-/* Hide default cursor on body and all interactive elements */
-body, a, button, [data-doc], [data-close], .row, .link-btn, .contact-links a {
+/* Hide the default cursor ONLY once cursor.js has confirmed it is drawing a replacement
+   (it sets .has-custom-cursor on <html>). Previously this applied unconditionally, so any
+   device that skipped initCursor — touch laptops, reduced-motion, or a script error — got
+   no pointer at all. Never hide the real cursor on a promise; hide it on proof. */
+html.has-custom-cursor body,
+html.has-custom-cursor a,
+html.has-custom-cursor button,
+html.has-custom-cursor [data-doc],
+html.has-custom-cursor [data-close],
+html.has-custom-cursor .row,
+html.has-custom-cursor .link-btn,
+html.has-custom-cursor .contact-links a {
   cursor: none !important;
 }
 
@@ -414,3 +428,83 @@ h2 {
   #ball { opacity: 0.5; }   /* sits behind, content stays readable */
   .window-body { padding: 22px 20px 30px; }
 }
+
+/* --- dossier repo line: a link when the repo is public, a plain note when not.
+       Both sit on the same rule so a closed repo doesn't read as a missing feature. --- */
+.win-doc .doc-repo {
+  margin: 30px 0 0; padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 13px; letter-spacing: 0.02em;
+}
+.win-doc .doc-repo a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+.win-doc .doc-repo a:hover { opacity: 0.7; }
+.win-doc .doc-repo--closed { color: rgba(40,34,22,0.55); }
+
+/* note under the projects list */
+.rows-note { margin-top: 18px; font-size: 12px; letter-spacing: 0.04em; color: rgba(40,34,22,0.5); }
+
+/* --- projects list carries 7 real entries now (was 4). At the default row rhythm
+       that overflowed the panel: heading clipped at the top, the note colliding with
+       the footer, and the longest name wrapping to two lines. Denser rows + a smaller
+       display size fit all seven on one screen without touching the other lists. --- */
+#sec-projects .rows { margin-top: 8px; }
+#sec-projects .row { padding: 10px 4px; }
+#sec-projects .row-name { font-size: clamp(16px, 1.65vw, 21px); }
+#sec-projects .rows-note { margin-top: 12px; }
+
+/* Row tags sit directly over a planet's bright limb. At --ink-faint (#A09A8C) they
+   effectively vanished against Saturn's white zone — the halo alone can't fix a
+   light-on-light pairing, so the tags step up to --ink-dim and keep a cream halo for
+   the darker ring bands. Legible over cream, planet, and ring alike. */
+.row-tag {
+  color: var(--ink-dim);
+  text-shadow: 0 0 5px var(--bg), 0 0 10px var(--bg), 0 0 18px var(--bg);
+}
+
+/* the index numerals and the note also cross the ring bands — same halo treatment */
+.row-idx, .row-date { text-shadow: 0 0 5px var(--bg), 0 0 10px var(--bg); }
+.rows-note { color: rgba(40,34,22,0.62); text-shadow: 0 0 5px var(--bg), 0 0 10px var(--bg), 0 0 18px var(--bg); }
+
+/* --- "code ↗" : one click straight to the repo, no dossier detour.
+       Sits between the tag and the arrow, quiet until you hover the row. --- */
+.row-repo {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); text-decoration: none; white-space: nowrap;
+  margin-left: 18px; padding: 5px 9px;
+  border: 1px solid var(--line); border-radius: 6px;
+  opacity: 0.55; transition: opacity 0.25s ease, color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+  text-shadow: 0 0 5px var(--bg), 0 0 10px var(--bg);
+  background: rgba(244,241,234,0.6);
+}
+.row:hover .row-repo { opacity: 1; border-color: rgba(10,10,10,0.3); }
+.row-repo:hover { color: var(--bg); background: var(--ink); border-color: var(--ink); opacity: 1; }
+.row-repo:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; opacity: 1; }
+@media (max-width: 980px) { .row-repo { margin-left: 10px; padding: 4px 7px; opacity: 1; } }
+/* the code-link takes width out of the row, so the longest project name needs a
+   slightly smaller display size to stay on one line */
+#sec-projects .row-name { font-size: clamp(15px, 1.5vw, 19px); }
+
+/* --- research line: a paper, not a repo. Sits under the projects list and reads
+       differently on purpose — no code button, an explicit status tag. --- */
+.research-line {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line);
+}
+.research-tag {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-dim); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
+  background: rgba(244,241,234,0.7); white-space: nowrap;
+}
+.research-btn {
+  background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+  font-family: var(--display); font-size: clamp(14px, 1.35vw, 17px); color: var(--ink);
+  letter-spacing: -0.01em; transition: color 0.25s ease;
+  text-shadow: 0 0 5px var(--bg), 0 0 10px var(--bg), 0 0 18px var(--bg);
+}
+.research-btn:hover { color: var(--accent-dim); }
+.research-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+/* the katti·os clock — runs on Navi Mumbai time, not the viewer's */
+.status-sep { opacity: 0.35; margin: 0 -2px; }
+.status-clock { font-family: var(--mono); letter-spacing: 0.14em; font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) { .status-sep, .status-clock { display: none; } }

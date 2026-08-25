@@ -5,6 +5,7 @@ const nodes = [];
 let mouseX = window.innerWidth / 2;
 let mouseY = window.innerHeight / 2;
 let isHot = false;
+let hotMix = 0;   // eased 0->1 hover state, drives the cursor ring
 
 class TrailNode {
   constructor(x, y) {
@@ -33,6 +34,11 @@ export function initCursor() {
   document.body.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
+
+  // Only hide the native cursor once we KNOW a replacement is running. The CSS used to
+  // do this unconditionally, so any device that skipped initCursor (touch laptops, or a
+  // thrown error here) was left with no pointer at all.
+  document.documentElement.classList.add('has-custom-cursor');
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -176,6 +182,34 @@ export function initCursor() {
     ctx.strokeStyle = 'rgba(10, 10, 10, 0.55)';
     ctx.lineWidth = 3.5;
     ctx.stroke();
+
+    // ---- THE CURSOR HEAD ----
+    // Without this there is no pointer on the page at all: the native cursor is hidden
+    // in CSS and the trail above collapses to a ~3px smudge whenever the mouse is still.
+    // The head is the thing you actually point with; the tail is decoration behind it.
+    hotMix += ((isHot ? 1 : 0) - hotMix) * 0.18;          // eased hover state
+
+    const hx = nodes[0].x, hy = nodes[0].y;
+    const ringR = 9 + hotMix * 9;                          // ring opens up over links
+
+    // outer ring — grows and darkens on anything clickable
+    ctx.beginPath();
+    ctx.arc(hx, hy, ringR, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(10, 10, 10, ${0.28 + hotMix * 0.42})`;
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+
+    // cream halo so the head stays visible over dark planets and ring bands
+    ctx.beginPath();
+    ctx.arc(hx, hy, 4.6, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(244, 241, 234, 0.9)';
+    ctx.fill();
+
+    // solid core — shrinks slightly as the ring opens, so the pair reads as a "target"
+    ctx.beginPath();
+    ctx.arc(hx, hy, 3.2 - hotMix * 1.1, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(10, 10, 10, 0.92)';
+    ctx.fill();
 
     requestAnimationFrame(tick);
   }

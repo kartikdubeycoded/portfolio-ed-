@@ -85,7 +85,12 @@ function closeWindow() {
   gsap.to(winPanel, { scale: 0.7, opacity: 0, filter: 'blur(10px)', duration: 0.3, ease: 'power2.in',
     onComplete: () => { win.classList.remove('is-open'); gsap.set(winPanel, { clearProps: 'all' }); } });
 }
-document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('click', () => openDoc(el.dataset.doc, el)));
+document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('click', (e) => {
+  // the "code ↗" link lives INSIDE the row, so its click would bubble up here and pop the
+  // dossier open behind the new tab. Let the link be a link.
+  if (e.target.closest('.row-repo')) return;
+  openDoc(el.dataset.doc, el);
+}));
 win.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeWindow));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWindow(); });
 
@@ -334,7 +339,11 @@ size(); addEventListener('resize', size);
 
 // ---------- Scroll drives where the astronaut drifts ----------
 const st = { p: 0 };
-ScrollTrigger.create({ trigger: 'main', start: 'top top', end: 'bottom bottom', scrub: 1, onUpdate: (self) => { st.p = self.progress; } });
+// scrub was 1.0 — a full second of catch-up stacked on TOP of Lenis's smoothing and the
+// damped cosmosPos below, three smoothers in series. That's what made the planets feel
+// like they were swimming behind the scroll. 0.25 keeps the jitter off the raw scroll
+// value and lets the single damped lerp own the feel.
+ScrollTrigger.create({ trigger: 'main', start: 'top top', end: 'bottom bottom', scrub: 0.25, onUpdate: (self) => { st.p = self.progress; } });
 
 // pointer tracking — normalized position + raw px speed (for the jiggle)
 const mouse = { x: 0, y: 0, px: window.innerWidth / 2, py: window.innerHeight / 2, speed: 0, lastT: performance.now() };
@@ -540,14 +549,19 @@ function tick() {
 
   // ---- the solar system turns as you scroll: active planet big-center,
   //      neighbours slide off to the sides, shrinking + receding into depth ----
-  cosmosPos += (st.p * (planets.length - 1) - cosmosPos) * 0.12;        // smoothed scroll index
+  // Frame-rate INDEPENDENT damping. The old `* 0.12` was a fixed per-frame step, so a
+  // 144Hz display converged ~2.4x faster than a 60Hz one — same scroll, different feel,
+  // and the planets visibly lagged the page on slower machines. Exponential decay over
+  // real elapsed time fixes that: identical motion at any refresh rate.
+  const COSMOS_TAU = 0.10;                                              // seconds to settle (smaller = tighter)
+  cosmosPos += (st.p * (planets.length - 1) - cosmosPos) * (1 - Math.exp(-dt / COSMOS_TAU));
   planets.forEach((pl, i) => {
     const dx = i - cosmosPos;                                           // signed distance from center slot
     const ad = Math.abs(dx);
     pl.g.position.x = dx * SPACING;
     pl.g.position.y = -ad * 0.5;                                        // gentle downward arc at the sides
-    pl.g.position.z = -ad * 2.4;                                        // recede into depth (fog fades far ones)
-    pl.g.scale.setScalar(1 / (1 + ad * 0.85));                         // big at center → small at sides
+    pl.g.position.z = -ad * 2.8;                                        // recede into depth (fog fades far ones)
+    pl.g.scale.setScalar(1 / (1 + ad * 0.95));                         // big at center → small at sides
     pl.spinner.rotation.y += pl.spin * dt;                             // self-rotation
     if (pl.clouds) pl.clouds.rotation.y += 0.02 * dt;                  // clouds drift over the surface
   });
@@ -601,3 +615,28 @@ function spawnMumbaiDot() {
     .add(() => { brandPort.classList.add('hit'); setTimeout(() => brandPort.classList.remove('hit'), 520); }, 0.96);
 }
 setInterval(spawnMumbaiDot, 420);              // steady stream so it reads as a line
+
+/* ---------- katti·os keeps its own clock ----------
+   The page calls itself an operating system and the Earth is deliberately rotated so
+   India faces the camera on load. So the status chip runs on Asia/Kolkata, not on the
+   viewer's timezone: wherever you're reading this from, the clock is the time where the
+   thing was built. Ticks once a second; if Intl can't resolve the zone (very old
+   browsers) the whole chip hides rather than showing a wrong time. */
+(() => {
+  const el = document.getElementById('status-clock');
+  if (!el) return;
+  let fmt;
+  try {
+    fmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    });
+    fmt.format(new Date());                        // prove it works before we rely on it
+  } catch {
+    el.remove();
+    document.querySelector('.status-sep')?.remove();
+    return;
+  }
+  const tick = () => { el.textContent = `${fmt.format(new Date())} IST`; };
+  tick();
+  setInterval(tick, 1000);
+})();
